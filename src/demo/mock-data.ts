@@ -3,6 +3,7 @@ import type { IChangeEventData } from "../lib/types.ts";
 export const mockData: IChangeEventData = {
   mainTrackConf: {
     item: {
+      id: "main-video",
       type: "video",
       startTime: 0,
       endTime: 30,
@@ -61,24 +62,28 @@ export const mockData: IChangeEventData = {
   },
   items: [
     {
+      id: "audio-1",
       type: "audio",
       startTime: 8,
       endTime: 13,
       zIndex: 1,
     },
     {
+      id: "audio-2",
       type: "audio",
       startTime: 15,
       endTime: 18,
       zIndex: 1,
     },
     {
+      id: "image-1",
       type: "image",
       startTime: 14,
       endTime: 18,
       zIndex: 2,
     },
     {
+      id: "sfx-1",
       type: "text",
       startTime: 5,
       endTime: 8,

@@ -17,4 +17,5 @@ export type {
   RowLayout,
   RowItemSlice,
   RowData,
+  SelectionMenuItem,
 } from "./types.ts";

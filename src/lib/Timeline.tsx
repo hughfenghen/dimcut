@@ -1,13 +1,15 @@
-import { type Component, For, createSignal, createMemo, onCleanup } from "solid-js";
+import { type Component, For, Show, createSignal, createMemo, onCleanup } from "solid-js";
 import type {
   DeletedRange,
   Item,
   RowItemSlice,
+  RowLayout,
   TimelineProps,
 } from "./types.ts";
-import { DEFAULT_PIXELS_PER_SECOND } from "./constants.ts";
+import { DEFAULT_PIXELS_PER_SECOND, TIME_LABEL_WIDTH } from "./constants.ts";
 import { computeRows, assignItemsToRows, packItemsInRow } from "./layout.ts";
 import { pixelToTime } from "./time-utils.ts";
+import { mergeDeletedRanges } from "./time-utils.ts";
 import { TimelineRow } from "./TimelineRow.tsx";
 
 export const Timeline: Component<TimelineProps> = (props) => {
@@ -17,8 +19,10 @@ export const Timeline: Component<TimelineProps> = (props) => {
     props.data.mainTrackConf.item.endTime - props.data.mainTrackConf.item.startTime;
 
   const [containerWidth, setContainerWidth] = createSignal(800);
+  let containerRef: HTMLDivElement | undefined;
 
   const setupResizeObserver = (el: HTMLDivElement) => {
+    containerRef = el;
     const observer = new ResizeObserver((entries) => {
       for (const entry of entries) {
         setContainerWidth(entry.contentRect.width);
@@ -53,35 +57,40 @@ export const Timeline: Component<TimelineProps> = (props) => {
     return result;
   });
 
-  // Drag state
-  const [dragItem, setDragItem] = createSignal<Item | null>(null);
+  // --- Drag state (id-based) ---
+  const [dragItemId, setDragItemId] = createSignal<string | null>(null);
   const [dragStartX, setDragStartX] = createSignal(0);
   const [dragOrigStart, setDragOrigStart] = createSignal(0);
+  const [dragDuration, setDragDuration] = createSignal(0);
 
   const handleItemDragStart = (e: MouseEvent, item: Item) => {
     e.preventDefault();
-    setDragItem(item);
+    setDragItemId(item.id);
     setDragStartX(e.clientX);
     setDragOrigStart(item.startTime);
+    setDragDuration(item.endTime - item.startTime);
+
+    // Clear any active selection when starting a drag
+    setHasSelection(false);
 
     const onMove = (me: MouseEvent) => {
-      const di = dragItem();
-      if (!di) return;
+      const id = dragItemId();
+      if (!id) return;
       const dx = me.clientX - dragStartX();
       const dt = dx / pps();
-      const duration = di.endTime - di.startTime;
+      const dur = dragDuration();
       let newStart = dragOrigStart() + dt;
-      newStart = Math.max(0, Math.min(newStart, totalDuration() - duration));
+      newStart = Math.max(0, Math.min(newStart, totalDuration() - dur));
       const newItems = props.data.items.map((it) =>
-        it === di
-          ? { ...it, startTime: newStart, endTime: newStart + duration }
+        it.id === id
+          ? { ...it, startTime: newStart, endTime: newStart + dur }
           : it,
       );
       props.onChange?.({ ...props.data, items: newItems as Item[] });
     };
 
     const onUp = () => {
-      setDragItem(null);
+      setDragItemId(null);
       window.removeEventListener("mousemove", onMove);
       window.removeEventListener("mouseup", onUp);
     };
@@ -90,38 +99,96 @@ export const Timeline: Component<TimelineProps> = (props) => {
     window.addEventListener("mouseup", onUp);
   };
 
-  // Range select state for creating deleted ranges
-  const [rangeStart, setRangeStart] = createSignal(0);
-  const [rangeEnd, setRangeEnd] = createSignal(0);
+  // --- Selection state ---
+  const [selectionStart, setSelectionStart] = createSignal(0);
+  const [selectionEnd, setSelectionEnd] = createSignal(0);
+  const [isSelecting, setIsSelecting] = createSignal(false);
+  const [hasSelection, setHasSelection] = createSignal(false);
+
+  const selectionRange = createMemo(() => {
+    if (!isSelecting() && !hasSelection()) return null;
+    const s = Math.min(selectionStart(), selectionEnd());
+    const e = Math.max(selectionStart(), selectionEnd());
+    if (e - s < 0.01) return null;
+    return { start: s, end: e };
+  });
+
+  // Convert mouse position to global time using row DOM elements
+  const mouseToTime = (clientX: number, clientY: number): number => {
+    if (!containerRef) return 0;
+    const rowEls = containerRef.querySelectorAll<HTMLElement>("[data-row-index]");
+    const currentRows = rows();
+    if (rowEls.length === 0 || currentRows.length === 0) return 0;
+
+    // Find which row the mouse is in
+    let targetRow: RowLayout | undefined;
+    let targetEl: HTMLElement | undefined;
+
+    for (let i = 0; i < rowEls.length; i++) {
+      const rect = rowEls[i].getBoundingClientRect();
+      if (clientY >= rect.top && clientY <= rect.bottom) {
+        targetRow = currentRows[i];
+        targetEl = rowEls[i];
+        break;
+      }
+    }
+
+    // Clamp to first/last row if mouse is above/below
+    if (!targetRow) {
+      const firstRect = rowEls[0].getBoundingClientRect();
+      const lastRect = rowEls[rowEls.length - 1].getBoundingClientRect();
+      if (clientY < firstRect.top) {
+        targetRow = currentRows[0];
+        targetEl = rowEls[0];
+      } else if (clientY > lastRect.bottom) {
+        targetRow = currentRows[currentRows.length - 1];
+        targetEl = rowEls[rowEls.length - 1];
+      } else {
+        targetRow = currentRows[0];
+        targetEl = rowEls[0];
+      }
+    }
+
+    // Find the content area (skip time label)
+    const contentEl = targetEl!.querySelector<HTMLElement>("[data-row-content]");
+    if (!contentEl) return targetRow.startTime;
+
+    const contentRect = contentEl.getBoundingClientRect();
+    const px = Math.max(0, clientX - contentRect.left);
+    const time = pixelToTime(px, targetRow.startTime, pps());
+    return Math.max(0, Math.min(time, totalDuration()));
+  };
 
   const handleRangeSelectStart = (e: MouseEvent, rowStartTime: number) => {
-    const rect = (e.currentTarget as HTMLElement).getBoundingClientRect();
+    // Calculate initial time from the row content area
+    const contentEl = (e.currentTarget as HTMLElement);
+    const rect = contentEl.getBoundingClientRect();
     const px = e.clientX - rect.left;
     const time = pixelToTime(px, rowStartTime, pps());
+    const clampedTime = Math.max(0, Math.min(time, totalDuration()));
 
-    setRangeStart(time);
-    setRangeEnd(time);
+    setSelectionStart(clampedTime);
+    setSelectionEnd(clampedTime);
+    setIsSelecting(true);
+    setHasSelection(false);
 
     const onMove = (me: MouseEvent) => {
-      const movePx = me.clientX - rect.left;
-      const moveTime = pixelToTime(movePx, rowStartTime, pps());
-      setRangeEnd(Math.max(0, Math.min(moveTime, totalDuration())));
+      const t = mouseToTime(me.clientX, me.clientY);
+      setSelectionEnd(t);
     };
 
     const onUp = () => {
       window.removeEventListener("mousemove", onMove);
       window.removeEventListener("mouseup", onUp);
+      setIsSelecting(false);
 
-      const s = Math.min(rangeStart(), rangeEnd());
-      const end = Math.max(rangeStart(), rangeEnd());
-      if (end - s < 0.1) return;
-
-      const newRange: DeletedRange = { start: s, end };
-      const existing = props.data.deletedRanges ?? [];
-      props.onChange?.({
-        ...props.data,
-        deletedRanges: [...existing, newRange],
-      });
+      const s = Math.min(selectionStart(), selectionEnd());
+      const end = Math.max(selectionStart(), selectionEnd());
+      if (end - s >= 0.1) {
+        setHasSelection(true);
+      } else {
+        setHasSelection(false);
+      }
     };
 
     window.addEventListener("mousemove", onMove);
@@ -136,8 +203,76 @@ export const Timeline: Component<TimelineProps> = (props) => {
     });
   };
 
+  const handleDeleteSelection = () => {
+    const sel = selectionRange();
+    if (!sel) return;
+    const existing = props.data.deletedRanges ?? [];
+    const merged = mergeDeletedRanges([...existing, { start: sel.start, end: sel.end }]);
+    props.onChange?.({
+      ...props.data,
+      deletedRanges: merged,
+    });
+    setHasSelection(false);
+  };
+
+  // Compute floating menu position
+  const menuPosition = createMemo(() => {
+    const sel = selectionRange();
+    if (!sel || !hasSelection() || !containerRef) return null;
+
+    const currentRows = rows();
+    // Find the last row that overlaps with the selection
+    let lastOverlapRowIdx = -1;
+    for (let i = 0; i < currentRows.length; i++) {
+      const row = currentRows[i];
+      if (sel.end > row.startTime && sel.start < row.endTime) {
+        lastOverlapRowIdx = i;
+      }
+    }
+    if (lastOverlapRowIdx < 0) return null;
+
+    // Find the first row that overlaps for positioning the menu at the top
+    let firstOverlapRowIdx = -1;
+    for (let i = 0; i < currentRows.length; i++) {
+      const row = currentRows[i];
+      if (sel.end > row.startTime && sel.start < row.endTime) {
+        firstOverlapRowIdx = i;
+        break;
+      }
+    }
+
+    const rowEls = containerRef.querySelectorAll<HTMLElement>("[data-row-index]");
+    if (firstOverlapRowIdx < 0 || firstOverlapRowIdx >= rowEls.length) return null;
+
+    const firstRowEl = rowEls[firstOverlapRowIdx];
+    const containerRect = containerRef.getBoundingClientRect();
+    const rowRect = firstRowEl.getBoundingClientRect();
+
+    // Position menu at the center of the selection's first row, above it
+    const firstRow = currentRows[firstOverlapRowIdx];
+    const selStartInRow = Math.max(sel.start, firstRow.startTime);
+    const selEndInRow = Math.min(sel.end, firstRow.endTime);
+    const leftPx = (selStartInRow - firstRow.startTime) * pps() + TIME_LABEL_WIDTH;
+    const rightPx = (selEndInRow - firstRow.startTime) * pps() + TIME_LABEL_WIDTH;
+    const centerX = (leftPx + rightPx) / 2;
+    const topY = rowRect.top - containerRect.top;
+
+    return { x: centerX, y: topY };
+  });
+
+  // Handle click outside selection to clear it
+  const handleContainerMouseDown = (e: MouseEvent) => {
+    // If clicking on the menu itself, don't clear
+    const target = e.target as HTMLElement;
+    if (target.closest("[data-selection-menu]")) return;
+  };
+
   return (
-    <div ref={setupResizeObserver} class="w-full">
+    <div
+      ref={setupResizeObserver}
+      class="w-full select-none relative"
+      onMouseDown={handleContainerMouseDown}
+    >
       <For each={rows()}>
         {(row) => {
           const mainSlices = () => mainSlicesByRow().get(row.rowIndex) ?? [];
@@ -146,7 +281,7 @@ export const Timeline: Component<TimelineProps> = (props) => {
             layersByRow().get(row.rowIndex) ?? [];
 
           return (
-            <div class="border-b border-gray-200">
+            <div class="border-b border-gray-200" data-row-index={row.rowIndex}>
               <TimelineRow
                 row={row}
                 mainTrackSlice={mainSlice()}
@@ -157,11 +292,57 @@ export const Timeline: Component<TimelineProps> = (props) => {
                 onItemDragStart={handleItemDragStart}
                 onRemoveDeletedRange={handleRemoveDeletedRange}
                 onRangeSelectStart={handleRangeSelectStart}
+                selectionRange={selectionRange() ?? undefined}
               />
             </div>
           );
         }}
       </For>
+
+      {/* Floating selection menu */}
+      <Show when={hasSelection() && menuPosition()}>
+        {(pos) => (
+          <div
+            data-selection-menu
+            class="absolute z-[100] flex items-center gap-1 bg-white border border-gray-300 rounded-md shadow-lg px-1 py-0.5"
+            style={{
+              left: `${pos().x}px`,
+              top: `${pos().y}px`,
+              transform: "translate(-50%, -100%) translateY(-4px)",
+            }}
+          >
+            {/* Default delete button */}
+            <button
+              class="w-7 h-7 flex items-center justify-center rounded hover:bg-red-50 text-gray-600 hover:text-red-500"
+              title="删除区间"
+              onClick={handleDeleteSelection}
+            >
+              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" class="w-4 h-4">
+                <path fill-rule="evenodd" d="M8.75 1A2.75 2.75 0 006 3.75v.443c-.795.077-1.584.176-2.365.298a.75.75 0 10.23 1.482l.149-.022.841 10.518A2.75 2.75 0 007.596 19h4.807a2.75 2.75 0 002.742-2.53l.841-10.519.149.023a.75.75 0 00.23-1.482A41.03 41.03 0 0014 4.193V3.75A2.75 2.75 0 0011.25 1h-2.5zM10 4c.84 0 1.673.025 2.5.075V3.75c0-.69-.56-1.25-1.25-1.25h-2.5c-.69 0-1.25.56-1.25 1.25v.325C8.327 4.025 9.16 4 10 4zM8.58 7.72a.75.75 0 00-1.5.06l.3 7.5a.75.75 0 101.5-.06l-.3-7.5zm4.34.06a.75.75 0 10-1.5-.06l-.3 7.5a.75.75 0 101.5.06l.3-7.5z" clip-rule="evenodd" />
+              </svg>
+            </button>
+
+            {/* Custom menu items */}
+            <For each={props.selectionMenuItems ?? []}>
+              {(menuItem) => (
+                <button
+                  class="w-7 h-7 flex items-center justify-center rounded hover:bg-gray-100 text-gray-600"
+                  title={menuItem.label}
+                  onClick={() => {
+                    const sel = selectionRange();
+                    if (sel) {
+                      menuItem.onClick(sel);
+                      setHasSelection(false);
+                    }
+                  }}
+                >
+                  {menuItem.icon()}
+                </button>
+              )}
+            </For>
+          </div>
+        )}
+      </Show>
     </div>
   );
 };

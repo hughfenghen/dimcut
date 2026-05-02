@@ -26,6 +26,7 @@ export interface TimelineRowProps {
   onItemDragStart?: (e: MouseEvent, item: Item) => void;
   onRemoveDeletedRange?: (range: DeletedRange) => void;
   onRangeSelectStart?: (e: MouseEvent, rowStartTime: number) => void;
+  selectionRange?: { start: number; end: number };
 }
 
 export const TimelineRow: Component<TimelineRowProps> = (props) => {
@@ -58,10 +59,22 @@ export const TimelineRow: Component<TimelineRowProps> = (props) => {
       (r) => r.end > props.row.startTime && r.start < props.row.endTime,
     );
 
+  // Selection overlay for this row
+  const selectionOverlay = () => {
+    const sel = props.selectionRange;
+    if (!sel) return null;
+    if (sel.end <= props.row.startTime || sel.start >= props.row.endTime) return null;
+    const visStart = Math.max(sel.start, props.row.startTime);
+    const visEnd = Math.min(sel.end, props.row.endTime);
+    const left = timeToPixel(visStart, props.row.startTime, props.pixelsPerSecond);
+    const width = (visEnd - visStart) * props.pixelsPerSecond;
+    return { left, width };
+  };
+
   const handleMouseDown = (e: MouseEvent) => {
     if (e.button !== 0) return;
     const target = e.target as HTMLElement;
-    if (target.closest("[data-track-item]") || target.closest("button")) return;
+    if (target.closest("[data-track-item]") || target.closest("button") || target.closest("[data-selection-menu]")) return;
     props.onRangeSelectStart?.(e, props.row.startTime);
   };
 
@@ -78,6 +91,7 @@ export const TimelineRow: Component<TimelineRowProps> = (props) => {
         class="relative flex-1"
         style={{ height: `${totalContentHeight()}px` }}
         onMouseDown={handleMouseDown}
+        data-row-content
       >
         <Show when={props.asrData}>
           {(asr) => (
@@ -167,6 +181,22 @@ export const TimelineRow: Component<TimelineRowProps> = (props) => {
             />
           )}
         </For>
+
+        {/* Selection overlay */}
+        <Show when={selectionOverlay()}>
+          {(overlay) => (
+            <div
+              class="absolute top-0 z-40 pointer-events-none"
+              style={{
+                left: `${overlay().left}px`,
+                width: `${overlay().width}px`,
+                height: `${totalContentHeight()}px`,
+                "background-color": "rgba(59, 130, 246, 0.2)",
+                border: "1px solid rgba(59, 130, 246, 0.4)",
+              }}
+            />
+          )}
+        </Show>
       </div>
     </div>
   );

@@ -17,6 +17,7 @@ export interface AsrData {
 }
 
 export interface IItem {
+  id: string;
   type: string;
   startTime: number;
   endTime: number;
@@ -62,10 +63,17 @@ export interface IChangeEventData {
   deletedRanges?: DeletedRange[];
 }
 
+export interface SelectionMenuItem {
+  icon: () => any;
+  label: string;
+  onClick: (selection: { start: number; end: number }) => void;
+}
+
 export interface TimelineProps {
   data: IChangeEventData;
   pixelsPerSecond?: number;
   onChange?: (data: IChangeEventData) => void;
+  selectionMenuItems?: SelectionMenuItem[];
 }
 
 export interface RowLayout {

@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { timeToPixel, pixelToTime, formatTime } from "../time-utils.ts";
+import { timeToPixel, pixelToTime, formatTime, mergeDeletedRanges } from "../time-utils.ts";
 
 describe("timeToPixel", () => {
   it("converts time at row start to 0px", () => {
@@ -48,5 +48,64 @@ describe("formatTime", () => {
 
   it("floors fractional seconds", () => {
     expect(formatTime(9.7)).toBe("00:09");
+  });
+});
+
+describe("mergeDeletedRanges", () => {
+  it("returns empty array for empty input", () => {
+    expect(mergeDeletedRanges([])).toEqual([]);
+  });
+
+  it("returns single range unchanged", () => {
+    expect(mergeDeletedRanges([{ start: 1, end: 3 }])).toEqual([{ start: 1, end: 3 }]);
+  });
+
+  it("merges overlapping ranges", () => {
+    expect(
+      mergeDeletedRanges([
+        { start: 1, end: 3 },
+        { start: 2, end: 4 },
+      ]),
+    ).toEqual([{ start: 1, end: 4 }]);
+  });
+
+  it("merges adjacent ranges", () => {
+    expect(
+      mergeDeletedRanges([
+        { start: 1, end: 3 },
+        { start: 3, end: 5 },
+      ]),
+    ).toEqual([{ start: 1, end: 5 }]);
+  });
+
+  it("does not merge non-overlapping ranges", () => {
+    expect(
+      mergeDeletedRanges([
+        { start: 1, end: 2 },
+        { start: 4, end: 5 },
+      ]),
+    ).toEqual([
+      { start: 1, end: 2 },
+      { start: 4, end: 5 },
+    ]);
+  });
+
+  it("handles fully contained range", () => {
+    expect(
+      mergeDeletedRanges([
+        { start: 1, end: 5 },
+        { start: 2, end: 3 },
+      ]),
+    ).toEqual([{ start: 1, end: 5 }]);
+  });
+
+  it("merges multiple overlapping ranges", () => {
+    expect(
+      mergeDeletedRanges([
+        { start: 5, end: 8 },
+        { start: 1, end: 3 },
+        { start: 2, end: 6 },
+      ]),
+    ).toEqual([{ start: 1, end: 8 }]);
   });
 });
