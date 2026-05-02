@@ -59,14 +59,14 @@ export const Timeline: Component<TimelineProps> = (props) => {
 
   // --- Drag state (id-based) ---
   const [dragItemId, setDragItemId] = createSignal<string | null>(null);
-  const [dragStartX, setDragStartX] = createSignal(0);
+  const [dragStartMouseTime, setDragStartMouseTime] = createSignal(0);
   const [dragOrigStart, setDragOrigStart] = createSignal(0);
   const [dragDuration, setDragDuration] = createSignal(0);
 
   const handleItemDragStart = (e: MouseEvent, item: Item) => {
     e.preventDefault();
     setDragItemId(item.id);
-    setDragStartX(e.clientX);
+    setDragStartMouseTime(mouseToTime(e.clientX, e.clientY));
     setDragOrigStart(item.startTime);
     setDragDuration(item.endTime - item.startTime);
 
@@ -76,8 +76,8 @@ export const Timeline: Component<TimelineProps> = (props) => {
     const onMove = (me: MouseEvent) => {
       const id = dragItemId();
       if (!id) return;
-      const dx = me.clientX - dragStartX();
-      const dt = dx / pps();
+      const currentMouseTime = mouseToTime(me.clientX, me.clientY);
+      const dt = currentMouseTime - dragStartMouseTime();
       const dur = dragDuration();
       let newStart = dragOrigStart() + dt;
       newStart = Math.max(0, Math.min(newStart, totalDuration() - dur));

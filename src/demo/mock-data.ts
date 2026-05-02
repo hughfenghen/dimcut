@@ -84,14 +84,11 @@ export const mockData: IChangeEventData = {
     },
     {
       id: "sfx-1",
-      type: "text",
+      type: "audio",
       startTime: 5,
       endTime: 8,
       zIndex: 1,
-      text: "SFX",
     },
   ],
-  deletedRanges: [
-    { start: 11, end: 13 },
-  ],
+  deletedRanges: [{ start: 11, end: 13 }],
 };

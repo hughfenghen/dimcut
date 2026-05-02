@@ -10,6 +10,7 @@ import {
   ASR_TRACK_HEIGHT,
   ROW_ITEM_HEIGHT,
   TIME_LABEL_WIDTH,
+  TRACK_GAP,
 } from "./constants.ts";
 import { formatTime, timeToPixel } from "./time-utils.ts";
 import { TrackItem } from "./TrackItem.tsx";
@@ -46,13 +47,24 @@ export const TimelineRow: Component<TimelineRowProps> = (props) => {
   const totalContentHeight = () => {
     const asr = hasAsr() ? ASR_TRACK_HEIGHT : 0;
     const main = mainTrackRows() * ROW_ITEM_HEIGHT;
-    const overlays = layerCount() * ROW_ITEM_HEIGHT;
-    return asr + main + overlays || ROW_ITEM_HEIGHT;
+    const lc = layerCount();
+    const overlays = lc > 0 ? lc * (ROW_ITEM_HEIGHT + TRACK_GAP) - TRACK_GAP : 0;
+    let gapCount = 0;
+    if (asr > 0 && main > 0) gapCount++;
+    if (asr > 0 && overlays > 0 && main === 0) gapCount++;
+    if (main > 0 && overlays > 0) gapCount++;
+    if (asr > 0 && main > 0 && overlays > 0) gapCount = 2;
+    const gaps = gapCount * TRACK_GAP;
+    return asr + main + overlays + gaps || ROW_ITEM_HEIGHT;
   };
 
-  const mainTrackTop = () => (hasAsr() ? ASR_TRACK_HEIGHT : 0);
+  const mainTrackTop = () => (hasAsr() ? ASR_TRACK_HEIGHT + TRACK_GAP : 0);
 
-  const overlayBaseTop = () => mainTrackTop() + mainTrackRows() * ROW_ITEM_HEIGHT;
+  const overlayBaseTop = () => {
+    let top = mainTrackTop() + mainTrackRows() * ROW_ITEM_HEIGHT;
+    if (mainTrackRows() > 0) top += TRACK_GAP;
+    return top;
+  };
 
   const visibleDeletedRanges = () =>
     props.deletedRanges.filter(
@@ -63,10 +75,15 @@ export const TimelineRow: Component<TimelineRowProps> = (props) => {
   const selectionOverlay = () => {
     const sel = props.selectionRange;
     if (!sel) return null;
-    if (sel.end <= props.row.startTime || sel.start >= props.row.endTime) return null;
+    if (sel.end <= props.row.startTime || sel.start >= props.row.endTime)
+      return null;
     const visStart = Math.max(sel.start, props.row.startTime);
     const visEnd = Math.min(sel.end, props.row.endTime);
-    const left = timeToPixel(visStart, props.row.startTime, props.pixelsPerSecond);
+    const left = timeToPixel(
+      visStart,
+      props.row.startTime,
+      props.pixelsPerSecond,
+    );
     const width = (visEnd - visStart) * props.pixelsPerSecond;
     return { left, width };
   };
@@ -74,12 +91,24 @@ export const TimelineRow: Component<TimelineRowProps> = (props) => {
   const handleMouseDown = (e: MouseEvent) => {
     if (e.button !== 0) return;
     const target = e.target as HTMLElement;
-    if (target.closest("[data-track-item]") || target.closest("button") || target.closest("[data-selection-menu]")) return;
+    if (
+      target.closest("[data-track-item]") ||
+      target.closest("button") ||
+      target.closest("[data-selection-menu]")
+    )
+      return;
     props.onRangeSelectStart?.(e, props.row.startTime);
   };
 
   return (
-    <div class="flex" style={{ "min-height": `${totalContentHeight()}px` }}>
+    <div
+      class="flex"
+      style={{
+        "min-height": `${totalContentHeight()}px`,
+        "padding-top": `${TRACK_GAP}px`,
+        "padding-bottom": `${TRACK_GAP}px`,
+      }}
+    >
       <div
         class="shrink-0 text-xs text-gray-400 pt-1 text-right pr-2"
         style={{ width: `${TIME_LABEL_WIDTH}px` }}
@@ -139,9 +168,9 @@ export const TimelineRow: Component<TimelineRowProps> = (props) => {
                     (m, s) => Math.max(m, s.subRow),
                     0,
                   );
-                  cumulativeTop += (maxSub + 1) * ROW_ITEM_HEIGHT;
+                  cumulativeTop += (maxSub + 1) * (ROW_ITEM_HEIGHT + TRACK_GAP);
                 }
-                const top = cumulativeTop + slice.subRow * ROW_ITEM_HEIGHT;
+                const top = cumulativeTop + slice.subRow * (ROW_ITEM_HEIGHT + TRACK_GAP);
 
                 return (
                   <div
