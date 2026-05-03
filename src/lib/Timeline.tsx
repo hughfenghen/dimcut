@@ -12,6 +12,7 @@ import { pixelToTime } from "./time-utils.ts";
 import { mergeDeletedRanges } from "./time-utils.ts";
 import { TimelineRow } from "./TimelineRow.tsx";
 import { ThumbnailExtractor } from "./thumbnail-extractor.ts";
+import { WaveformExtractor } from "./waveform-extractor.ts";
 
 export const Timeline: Component<TimelineProps> = (props) => {
   const pps = () => props.pixelsPerSecond ?? DEFAULT_PIXELS_PER_SECOND;
@@ -92,6 +93,28 @@ export const Timeline: Component<TimelineProps> = (props) => {
 
   onCleanup(() => {
     extractor()?.dispose();
+  });
+
+  // --- Waveform extractor ---
+  const [waveformExt, setWaveformExt] = createSignal<WaveformExtractor | undefined>();
+
+  createEffect(
+    on(
+      () => props.initData.mainTrackConf.item,
+      (item) => {
+        waveformExt()?.dispose();
+        setWaveformExt(undefined);
+
+        if ("file" in item) {
+          const ext = new WaveformExtractor(item.file);
+          ext.init().then(() => setWaveformExt(ext));
+        }
+      },
+    ),
+  );
+
+  onCleanup(() => {
+    waveformExt()?.dispose();
   });
 
   // --- Drag state (id-based) ---
@@ -330,6 +353,7 @@ export const Timeline: Component<TimelineProps> = (props) => {
                 onRangeSelectStart={handleRangeSelectStart}
                 selectionRange={selectionRange() ?? undefined}
                 thumbnailExtractor={extractor()}
+                waveformExtractor={waveformExt()}
               />
             </div>
           );

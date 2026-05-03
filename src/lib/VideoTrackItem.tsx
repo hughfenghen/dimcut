@@ -1,9 +1,13 @@
-import { type Component, createEffect, createSignal, on, onCleanup } from "solid-js";
+import { type Component, createEffect, createSignal, on, onCleanup, Show } from "solid-js";
 import { ITEM_COLORS, MAIN_TRACK_HEIGHT } from "./constants.ts";
 import {
   computeThumbnailParams,
   type ThumbnailExtractor,
 } from "./thumbnail-extractor.ts";
+import { WaveformCanvas } from "./WaveformCanvas.tsx";
+import type { WaveformExtractor } from "./waveform-extractor.ts";
+
+const WAVEFORM_HEIGHT = 20;
 
 export interface VideoTrackItemProps {
   extractor: ThumbnailExtractor;
@@ -13,14 +17,22 @@ export interface VideoTrackItemProps {
   pixelsPerSecond: number;
   left: number;
   width: number;
+  waveformExtractor?: WaveformExtractor;
 }
 
 export const VideoTrackItem: Component<VideoTrackItemProps> = (props) => {
   let canvasRef: HTMLCanvasElement | undefined;
   let throttleTimer: ReturnType<typeof setTimeout> | null = null;
   const [isVisible, setIsVisible] = createSignal(false);
+  const [waveformData, setWaveformData] = createSignal<Float32Array>(new Float32Array(0));
   let hasDrawn = false;
   let lastDrawnPps = 0;
+
+  const hasWaveform = () =>
+    props.waveformExtractor != null && props.waveformExtractor.hasAudioTrack();
+
+  const totalHeight = () =>
+    hasWaveform() ? MAIN_TRACK_HEIGHT + WAVEFORM_HEIGHT : MAIN_TRACK_HEIGHT;
 
   const drawThumbnails = async () => {
     const canvas = canvasRef;
@@ -62,6 +74,16 @@ export const VideoTrackItem: Component<VideoTrackItemProps> = (props) => {
     )) {
       const x = (time - props.visibleStart) * pps;
       ctx.drawImage(thumbCanvas as CanvasImageSource, x, 0, thumbnailWidth, height);
+    }
+
+    // Load waveform data if available
+    if (props.waveformExtractor?.hasAudioTrack()) {
+      const data = await props.waveformExtractor.extract(
+        props.visibleStart,
+        props.visibleEnd,
+        pps,
+      );
+      setWaveformData(data);
     }
 
     hasDrawn = true;
@@ -107,6 +129,9 @@ export const VideoTrackItem: Component<VideoTrackItemProps> = (props) => {
     if (throttleTimer) clearTimeout(throttleTimer);
   });
 
+  const canvasWidth = () =>
+    Math.ceil((props.visibleEnd - props.visibleStart) * props.pixelsPerSecond);
+
   return (
     <div
       ref={setupObserver}
@@ -114,18 +139,29 @@ export const VideoTrackItem: Component<VideoTrackItemProps> = (props) => {
       style={{
         left: `${props.left}px`,
         width: `${props.width}px`,
-        height: `${MAIN_TRACK_HEIGHT}px`,
+        height: `${totalHeight()}px`,
         "background-color": ITEM_COLORS.video,
       }}
     >
-      <canvas
-        ref={canvasRef}
-        style={{
-          width: "100%",
-          height: "100%",
-          display: "block",
-        }}
-      />
+      <div style={{ height: `${MAIN_TRACK_HEIGHT}px` }}>
+        <canvas
+          ref={canvasRef}
+          style={{
+            width: "100%",
+            height: "100%",
+            display: "block",
+          }}
+        />
+      </div>
+      <Show when={hasWaveform()}>
+        <div style={{ height: `${WAVEFORM_HEIGHT}px` }}>
+          <WaveformCanvas
+            waveformData={waveformData()}
+            width={canvasWidth()}
+            height={WAVEFORM_HEIGHT}
+          />
+        </div>
+      </Show>
     </div>
   );
 };

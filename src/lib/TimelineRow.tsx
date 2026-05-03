@@ -16,9 +16,11 @@ import {
 import { formatTime, timeToPixel } from "./time-utils.ts";
 import { TrackItem } from "./TrackItem.tsx";
 import { VideoTrackItem } from "./VideoTrackItem.tsx";
+import { AudioTrackItem } from "./AudioTrackItem.tsx";
 import { AsrTrack } from "./AsrTrack.tsx";
 import { DeletedRangeOverlay } from "./DeletedRange.tsx";
 import type { ThumbnailExtractor } from "./thumbnail-extractor.ts";
+import type { WaveformExtractor } from "./waveform-extractor.ts";
 
 export interface TimelineRowProps {
   row: RowLayout;
@@ -32,6 +34,7 @@ export interface TimelineRowProps {
   onRangeSelectStart?: (e: MouseEvent, rowStartTime: number) => void;
   selectionRange?: { start: number; end: number };
   thumbnailExtractor?: ThumbnailExtractor;
+  waveformExtractor?: WaveformExtractor;
 }
 
 export const TimelineRow: Component<TimelineRowProps> = (props) => {
@@ -48,9 +51,21 @@ export const TimelineRow: Component<TimelineRowProps> = (props) => {
 
   const mainTrackRows = () => (props.mainTrackSlice ? 1 : 0);
 
+  const mainTrackHeight = () => {
+    const slice = props.mainTrackSlice;
+    if (!slice) return MAIN_TRACK_HEIGHT;
+    if (slice.item.type === "video" && props.waveformExtractor?.hasAudioTrack()) {
+      return MAIN_TRACK_HEIGHT + 20;
+    }
+    if (slice.item.type === "audio") {
+      return ROW_ITEM_HEIGHT;
+    }
+    return MAIN_TRACK_HEIGHT;
+  };
+
   const totalContentHeight = () => {
     const asr = hasAsr() ? ASR_TRACK_HEIGHT : 0;
-    const main = mainTrackRows() * MAIN_TRACK_HEIGHT;
+    const main = mainTrackRows() * mainTrackHeight();
     const lc = layerCount();
     const overlays = lc > 0 ? lc * (ROW_ITEM_HEIGHT + TRACK_GAP) - TRACK_GAP : 0;
     let gapCount = 0;
@@ -65,7 +80,7 @@ export const TimelineRow: Component<TimelineRowProps> = (props) => {
   const mainTrackTop = () => (hasAsr() ? ASR_TRACK_HEIGHT + TRACK_GAP : 0);
 
   const overlayBaseTop = () => {
-    let top = mainTrackTop() + mainTrackRows() * MAIN_TRACK_HEIGHT;
+    let top = mainTrackTop() + mainTrackRows() * mainTrackHeight();
     if (mainTrackRows() > 0) top += TRACK_GAP;
     return top;
   };
@@ -164,6 +179,17 @@ export const TimelineRow: Component<TimelineRowProps> = (props) => {
                     pixelsPerSecond={props.pixelsPerSecond}
                     left={left()}
                     width={width()}
+                    waveformExtractor={props.waveformExtractor}
+                  />
+                ) : slice().item.type === "audio" && props.waveformExtractor ? (
+                  <AudioTrackItem
+                    extractor={props.waveformExtractor}
+                    visibleStart={slice().visibleStart}
+                    visibleEnd={slice().visibleEnd}
+                    rowStartTime={props.row.startTime}
+                    pixelsPerSecond={props.pixelsPerSecond}
+                    left={left()}
+                    width={width()}
                   />
                 ) : (
                   <TrackItem
@@ -182,21 +208,23 @@ export const TimelineRow: Component<TimelineRowProps> = (props) => {
           {(layer, layerIdx) => (
             <For each={layer}>
               {(slice) => {
-                let cumulativeTop = overlayBaseTop();
-                for (let i = 0; i < layerIdx(); i++) {
-                  const prevLayer = props.layers[i];
-                  const maxSub = prevLayer.reduce(
-                    (m, s) => Math.max(m, s.subRow),
-                    0,
-                  );
-                  cumulativeTop += (maxSub + 1) * (ROW_ITEM_HEIGHT + TRACK_GAP);
-                }
-                const top = cumulativeTop + slice.subRow * (ROW_ITEM_HEIGHT + TRACK_GAP);
+                const top = () => {
+                  let cumulativeTop = overlayBaseTop();
+                  for (let i = 0; i < layerIdx(); i++) {
+                    const prevLayer = props.layers[i];
+                    const maxSub = prevLayer.reduce(
+                      (m, s) => Math.max(m, s.subRow),
+                      0,
+                    );
+                    cumulativeTop += (maxSub + 1) * (ROW_ITEM_HEIGHT + TRACK_GAP);
+                  }
+                  return cumulativeTop + slice.subRow * (ROW_ITEM_HEIGHT + TRACK_GAP);
+                };
 
                 return (
                   <div
                     class="absolute"
-                    style={{ top: `${top}px` }}
+                    style={{ top: `${top()}px` }}
                     data-track-item
                   >
                     <TrackItem

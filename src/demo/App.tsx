@@ -30,7 +30,15 @@ async function loadDemoData(): Promise<IChangeEventData> {
       },
       asrData,
     },
-    items: [],
+    items: [
+      {
+        id: "xxx",
+        type: "audio",
+        startTime: 0,
+        endTime: 10,
+        zIndex: 1,
+      },
+    ],
     deletedRanges: [],
   };
 }
