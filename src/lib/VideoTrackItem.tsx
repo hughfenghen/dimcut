@@ -1,4 +1,4 @@
-import { type Component, createEffect, on, onCleanup } from "solid-js";
+import { type Component, createEffect, createSignal, on, onCleanup } from "solid-js";
 import { ITEM_COLORS, MAIN_TRACK_HEIGHT } from "./constants.ts";
 import {
   computeThumbnailParams,
@@ -18,6 +18,9 @@ export interface VideoTrackItemProps {
 export const VideoTrackItem: Component<VideoTrackItemProps> = (props) => {
   let canvasRef: HTMLCanvasElement | undefined;
   let throttleTimer: ReturnType<typeof setTimeout> | null = null;
+  const [isVisible, setIsVisible] = createSignal(false);
+  let hasDrawn = false;
+  let lastDrawnPps = 0;
 
   const drawThumbnails = async () => {
     const canvas = canvasRef;
@@ -60,6 +63,9 @@ export const VideoTrackItem: Component<VideoTrackItemProps> = (props) => {
       const x = (time - props.visibleStart) * pps;
       ctx.drawImage(thumbCanvas as CanvasImageSource, x, 0, thumbnailWidth, height);
     }
+
+    hasDrawn = true;
+    lastDrawnPps = pps;
   };
 
   const throttledDraw = () => {
@@ -69,11 +75,30 @@ export const VideoTrackItem: Component<VideoTrackItemProps> = (props) => {
     }, 300);
   };
 
+  // Lazy load: only extract thumbnails when visible in viewport
+  const setupObserver = (el: HTMLDivElement) => {
+    const observer = new IntersectionObserver(
+      (entries) => {
+        for (const entry of entries) {
+          setIsVisible(entry.isIntersecting);
+        }
+      },
+      { rootMargin: "100px 0px" },
+    );
+    observer.observe(el);
+    onCleanup(() => observer.disconnect());
+  };
+
+  // Only trigger redraw on pps change (not visibleStart/visibleEnd or deleteRanges)
   createEffect(
     on(
-      () => [props.pixelsPerSecond, props.visibleStart, props.visibleEnd],
+      [() => props.pixelsPerSecond, isVisible],
       () => {
-        throttledDraw();
+        if (!isVisible()) return;
+        // Only redraw if pps changed or never drawn
+        if (!hasDrawn || props.pixelsPerSecond !== lastDrawnPps) {
+          throttledDraw();
+        }
       },
     ),
   );
@@ -84,6 +109,7 @@ export const VideoTrackItem: Component<VideoTrackItemProps> = (props) => {
 
   return (
     <div
+      ref={setupObserver}
       class="absolute rounded-sm overflow-hidden select-none"
       style={{
         left: `${props.left}px`,

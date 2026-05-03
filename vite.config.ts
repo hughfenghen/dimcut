@@ -5,6 +5,11 @@ import tailwindcss from "@tailwindcss/vite";
 
 export default defineConfig({
   plugins: [tailwindcss(), solid()],
+  server: {
+    watch: {
+      ignored: ["**/specs/**"],
+    },
+  },
   build: {
     lib: {
       entry: resolve(__dirname, "src/lib/index.ts"),

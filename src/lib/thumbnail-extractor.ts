@@ -34,6 +34,10 @@ export class ThumbnailExtractor {
   private sink: InstanceType<typeof CanvasSink> | null = null;
   private videoInfo: VideoInfo | null = null;
   private initPromise: Promise<void> | null = null;
+  // Cache: step -> (timestamp -> canvas)
+  private cache: Map<number, Map<number, HTMLCanvasElement | OffscreenCanvas>> =
+    new Map();
+  private currentStep: number = 0;
 
   constructor(file: File) {
     this.file = file;
@@ -80,30 +84,67 @@ export class ThumbnailExtractor {
     return this.videoInfo;
   }
 
+  /**
+   * Extract thumbnails with caching. When step changes, old cache is cleared.
+   * Already-extracted timestamps are returned from cache without re-decoding.
+   */
   async *extract(
     startTime: number,
     endTime: number,
     step: number,
-  ): AsyncGenerator<{ time: number; canvas: HTMLCanvasElement | OffscreenCanvas }> {
+  ): AsyncGenerator<{
+    time: number;
+    canvas: HTMLCanvasElement | OffscreenCanvas;
+  }> {
     if (!this.sink || !this.videoTrack) return;
 
-    const firstTimestamp = await this.videoTrack.getFirstTimestamp();
-    const timestamps: number[] = [];
-    for (let t = startTime; t < endTime; t += step) {
-      timestamps.push(firstTimestamp + t);
+    // If step changed, invalidate cache
+    if (step !== this.currentStep) {
+      this.cache.clear();
+      this.currentStep = step;
     }
-    if (timestamps.length === 0) return;
 
-    let idx = 0;
-    for await (const result of this.sink.canvasesAtTimestamps(timestamps)) {
-      if (result) {
-        yield { time: timestamps[idx] - firstTimestamp, canvas: result.canvas };
+    let stepCache = this.cache.get(step);
+    if (!stepCache) {
+      stepCache = new Map();
+      this.cache.set(step, stepCache);
+    }
+
+    const firstTimestamp = await this.videoTrack.getFirstTimestamp();
+
+    // Separate cached vs uncached timestamps
+    const allTimes: number[] = [];
+    const uncachedTimes: number[] = [];
+    for (let t = startTime; t < endTime; t += step) {
+      allTimes.push(t);
+      if (!stepCache.has(t)) {
+        uncachedTimes.push(t);
       }
-      idx++;
+    }
+
+    // Extract only uncached thumbnails
+    if (uncachedTimes.length > 0) {
+      const timestamps = uncachedTimes.map((t) => firstTimestamp + t);
+      let idx = 0;
+      for await (const result of this.sink.canvasesAtTimestamps(timestamps)) {
+        if (result) {
+          stepCache.set(uncachedTimes[idx], result.canvas);
+        }
+        idx++;
+      }
+    }
+
+    // Yield all in order (from cache)
+    for (const t of allTimes) {
+      const canvas = stepCache.get(t);
+      if (canvas) {
+        yield { time: t, canvas };
+      }
     }
   }
 
   dispose(): void {
+    this.cache.clear();
     this.sink = null;
     this.videoTrack = null;
     this.input = null;

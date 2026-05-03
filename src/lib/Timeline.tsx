@@ -17,7 +17,20 @@ export const Timeline: Component<TimelineProps> = (props) => {
   const pps = () => props.pixelsPerSecond ?? DEFAULT_PIXELS_PER_SECOND;
 
   const totalDuration = () =>
-    props.data.mainTrackConf.item.endTime - props.data.mainTrackConf.item.startTime;
+    props.initData.mainTrackConf.item.endTime - props.initData.mainTrackConf.item.startTime;
+
+  const [items, setItems] = createSignal<Item[]>(props.initData.items);
+  const [deletedRanges, setDeletedRanges] = createSignal<DeletedRange[]>(
+    props.initData.deletedRanges ?? [],
+  );
+
+  const emitChange = (nextItems = items(), nextDeletedRanges = deletedRanges()) => {
+    props.onChange?.({
+      mainTrackConf: props.initData.mainTrackConf,
+      items: nextItems,
+      deletedRanges: nextDeletedRanges,
+    });
+  };
 
   const [containerWidth, setContainerWidth] = createSignal(800);
   let containerRef: HTMLDivElement | undefined;
@@ -37,10 +50,10 @@ export const Timeline: Component<TimelineProps> = (props) => {
     computeRows(totalDuration(), containerWidth(), pps()),
   );
 
-  const mainTrackItem = () => props.data.mainTrackConf.item;
+  const mainTrackItem = () => props.initData.mainTrackConf.item;
 
   const itemsByRow = createMemo(() =>
-    assignItemsToRows(props.data.items, rows()),
+    assignItemsToRows(items(), rows()),
   );
 
   const mainSlicesByRow = createMemo(() => {
@@ -63,7 +76,7 @@ export const Timeline: Component<TimelineProps> = (props) => {
 
   createEffect(
     on(
-      () => props.data.mainTrackConf.item,
+      () => props.initData.mainTrackConf.item,
       (item) => {
         // Dispose previous extractor
         extractor()?.dispose();
@@ -105,12 +118,13 @@ export const Timeline: Component<TimelineProps> = (props) => {
       const dur = dragDuration();
       let newStart = dragOrigStart() + dt;
       newStart = Math.max(0, Math.min(newStart, totalDuration() - dur));
-      const newItems = props.data.items.map((it) =>
+      const newItems = items().map((it) =>
         it.id === id
           ? { ...it, startTime: newStart, endTime: newStart + dur }
           : it,
       );
-      props.onChange?.({ ...props.data, items: newItems as Item[] });
+      setItems(newItems as Item[]);
+      emitChange(newItems as Item[]);
     };
 
     const onUp = () => {
@@ -220,22 +234,20 @@ export const Timeline: Component<TimelineProps> = (props) => {
   };
 
   const handleRemoveDeletedRange = (range: DeletedRange) => {
-    const existing = props.data.deletedRanges ?? [];
-    props.onChange?.({
-      ...props.data,
-      deletedRanges: existing.filter((r) => r !== range),
-    });
+    const nextDeletedRanges = deletedRanges().filter((r) => r !== range);
+    setDeletedRanges(nextDeletedRanges);
+    emitChange(items(), nextDeletedRanges);
   };
 
   const handleDeleteSelection = () => {
     const sel = selectionRange();
     if (!sel) return;
-    const existing = props.data.deletedRanges ?? [];
-    const merged = mergeDeletedRanges([...existing, { start: sel.start, end: sel.end }]);
-    props.onChange?.({
-      ...props.data,
-      deletedRanges: merged,
-    });
+    const merged = mergeDeletedRanges([
+      ...deletedRanges(),
+      { start: sel.start, end: sel.end },
+    ]);
+    setDeletedRanges(merged);
+    emitChange(items(), merged);
     setHasSelection(false);
   };
 
@@ -310,8 +322,8 @@ export const Timeline: Component<TimelineProps> = (props) => {
                 row={row}
                 mainTrackSlice={mainSlice()}
                 layers={overlayLayers()}
-                asrData={props.data.mainTrackConf.asrData}
-                deletedRanges={props.data.deletedRanges ?? []}
+                asrData={props.initData.mainTrackConf.asrData}
+                deletedRanges={deletedRanges()}
                 pixelsPerSecond={pps()}
                 onItemDragStart={handleItemDragStart}
                 onRemoveDeletedRange={handleRemoveDeletedRange}

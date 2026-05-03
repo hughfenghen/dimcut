@@ -70,7 +70,7 @@ export interface SelectionMenuItem {
 }
 
 export interface TimelineProps {
-  data: IChangeEventData;
+  initData: IChangeEventData;
   pixelsPerSecond?: number;
   onChange?: (data: IChangeEventData) => void;
   selectionMenuItems?: SelectionMenuItem[];

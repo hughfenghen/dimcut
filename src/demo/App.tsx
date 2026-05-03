@@ -53,20 +53,14 @@ function getVideoDuration(file: File): Promise<number> {
 
 const App: Component = () => {
   const [demoData] = createResource(loadDemoData);
-  const [data, setData] = createSignal<IChangeEventData | undefined>();
   const [pps, setPps] = createSignal(80);
-
-  // Sync resource into signal for onChange support
-  const currentData = () => data() ?? demoData();
 
   return (
     <div class="max-w-4xl mx-auto p-4">
       <h1 class="text-xl font-bold mb-4">Open ZingAI - Timeline Demo</h1>
 
       <div class="mb-4 flex items-center gap-4">
-        <label class="text-sm">
-          Pixels per second: {pps()}
-        </label>
+        <label class="text-sm">Pixels per second: {pps()}</label>
         <input
           type="range"
           min="20"
@@ -78,21 +72,28 @@ const App: Component = () => {
       </div>
 
       {demoData.loading && (
-        <div class="text-gray-500 text-sm py-8 text-center">Loading demo data...</div>
+        <div class="text-gray-500 text-sm py-8 text-center">
+          Loading demo data...
+        </div>
       )}
 
-      {currentData() && (
+      {demoData() && (
         <div class="border border-gray-300 rounded bg-white">
           <Timeline
-            data={currentData()!}
+            initData={demoData()!}
             pixelsPerSecond={pps()}
-            onChange={setData}
+            onChange={(arg) => {
+              console.log("onChange", arg);
+            }}
           />
         </div>
       )}
 
       <div class="mt-4 text-xs text-gray-500">
-        <p>拖拽覆盖素材可移动位置 | 在空白区域拖拽可创建删除区间 | 悬停删除区间可移除</p>
+        <p>
+          拖拽覆盖素材可移动位置 | 在空白区域拖拽可创建删除区间 |
+          悬停删除区间可移除
+        </p>
       </div>
     </div>
   );
