@@ -8,14 +8,17 @@ import type {
 } from "./types.ts";
 import {
   ASR_TRACK_HEIGHT,
+  MAIN_TRACK_HEIGHT,
   ROW_ITEM_HEIGHT,
   TIME_LABEL_WIDTH,
   TRACK_GAP,
 } from "./constants.ts";
 import { formatTime, timeToPixel } from "./time-utils.ts";
 import { TrackItem } from "./TrackItem.tsx";
+import { VideoTrackItem } from "./VideoTrackItem.tsx";
 import { AsrTrack } from "./AsrTrack.tsx";
 import { DeletedRangeOverlay } from "./DeletedRange.tsx";
+import type { ThumbnailExtractor } from "./thumbnail-extractor.ts";
 
 export interface TimelineRowProps {
   row: RowLayout;
@@ -28,6 +31,7 @@ export interface TimelineRowProps {
   onRemoveDeletedRange?: (range: DeletedRange) => void;
   onRangeSelectStart?: (e: MouseEvent, rowStartTime: number) => void;
   selectionRange?: { start: number; end: number };
+  thumbnailExtractor?: ThumbnailExtractor;
 }
 
 export const TimelineRow: Component<TimelineRowProps> = (props) => {
@@ -46,7 +50,7 @@ export const TimelineRow: Component<TimelineRowProps> = (props) => {
 
   const totalContentHeight = () => {
     const asr = hasAsr() ? ASR_TRACK_HEIGHT : 0;
-    const main = mainTrackRows() * ROW_ITEM_HEIGHT;
+    const main = mainTrackRows() * MAIN_TRACK_HEIGHT;
     const lc = layerCount();
     const overlays = lc > 0 ? lc * (ROW_ITEM_HEIGHT + TRACK_GAP) - TRACK_GAP : 0;
     let gapCount = 0;
@@ -61,7 +65,7 @@ export const TimelineRow: Component<TimelineRowProps> = (props) => {
   const mainTrackTop = () => (hasAsr() ? ASR_TRACK_HEIGHT + TRACK_GAP : 0);
 
   const overlayBaseTop = () => {
-    let top = mainTrackTop() + mainTrackRows() * ROW_ITEM_HEIGHT;
+    let top = mainTrackTop() + mainTrackRows() * MAIN_TRACK_HEIGHT;
     if (mainTrackRows() > 0) top += TRACK_GAP;
     return top;
   };
@@ -134,27 +138,44 @@ export const TimelineRow: Component<TimelineRowProps> = (props) => {
         </Show>
 
         <Show when={props.mainTrackSlice}>
-          {(slice) => (
-            <div
-              class="absolute"
-              style={{ top: `${mainTrackTop()}px` }}
-              data-track-item
-            >
-              <TrackItem
-                item={slice().item}
-                left={timeToPixel(
-                  slice().visibleStart,
-                  props.row.startTime,
-                  props.pixelsPerSecond,
+          {(slice) => {
+            const left = () =>
+              timeToPixel(
+                slice().visibleStart,
+                props.row.startTime,
+                props.pixelsPerSecond,
+              );
+            const width = () =>
+              (slice().visibleEnd - slice().visibleStart) *
+              props.pixelsPerSecond;
+
+            return (
+              <div
+                class="absolute"
+                style={{ top: `${mainTrackTop()}px` }}
+                data-track-item
+              >
+                {slice().item.type === "video" && props.thumbnailExtractor ? (
+                  <VideoTrackItem
+                    extractor={props.thumbnailExtractor}
+                    visibleStart={slice().visibleStart}
+                    visibleEnd={slice().visibleEnd}
+                    rowStartTime={props.row.startTime}
+                    pixelsPerSecond={props.pixelsPerSecond}
+                    left={left()}
+                    width={width()}
+                  />
+                ) : (
+                  <TrackItem
+                    item={slice().item}
+                    left={left()}
+                    width={width()}
+                    isMainTrack
+                  />
                 )}
-                width={
-                  (slice().visibleEnd - slice().visibleStart) *
-                  props.pixelsPerSecond
-                }
-                isMainTrack
-              />
-            </div>
-          )}
+              </div>
+            );
+          }}
         </Show>
 
         <For each={props.layers}>

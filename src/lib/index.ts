@@ -1,4 +1,10 @@
 export { Timeline } from "./Timeline.tsx";
+export { VideoTrackItem } from "./VideoTrackItem.tsx";
+export {
+  ThumbnailExtractor,
+  computeThumbnailParams,
+} from "./thumbnail-extractor.ts";
+export type { ThumbnailParams, VideoInfo } from "./thumbnail-extractor.ts";
 export type {
   AsrWord,
   AsrSegment,

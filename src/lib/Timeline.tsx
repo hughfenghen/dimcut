@@ -1,4 +1,4 @@
-import { type Component, For, Show, createSignal, createMemo, onCleanup } from "solid-js";
+import { type Component, For, Show, createSignal, createMemo, createEffect, on, onCleanup } from "solid-js";
 import type {
   DeletedRange,
   Item,
@@ -11,6 +11,7 @@ import { computeRows, assignItemsToRows, packItemsInRow } from "./layout.ts";
 import { pixelToTime } from "./time-utils.ts";
 import { mergeDeletedRanges } from "./time-utils.ts";
 import { TimelineRow } from "./TimelineRow.tsx";
+import { ThumbnailExtractor } from "./thumbnail-extractor.ts";
 
 export const Timeline: Component<TimelineProps> = (props) => {
   const pps = () => props.pixelsPerSecond ?? DEFAULT_PIXELS_PER_SECOND;
@@ -55,6 +56,29 @@ export const Timeline: Component<TimelineProps> = (props) => {
       result.set(row.rowIndex, packItemsInRow(slices));
     }
     return result;
+  });
+
+  // --- Thumbnail extractor ---
+  const [extractor, setExtractor] = createSignal<ThumbnailExtractor | undefined>();
+
+  createEffect(
+    on(
+      () => props.data.mainTrackConf.item,
+      (item) => {
+        // Dispose previous extractor
+        extractor()?.dispose();
+        setExtractor(undefined);
+
+        if (item.type === "video" && "file" in item) {
+          const ext = new ThumbnailExtractor(item.file);
+          ext.init().then(() => setExtractor(ext));
+        }
+      },
+    ),
+  );
+
+  onCleanup(() => {
+    extractor()?.dispose();
   });
 
   // --- Drag state (id-based) ---
@@ -293,6 +317,7 @@ export const Timeline: Component<TimelineProps> = (props) => {
                 onRemoveDeletedRange={handleRemoveDeletedRange}
                 onRangeSelectStart={handleRangeSelectStart}
                 selectionRange={selectionRange() ?? undefined}
+                thumbnailExtractor={extractor()}
               />
             </div>
           );

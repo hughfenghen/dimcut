@@ -25,7 +25,7 @@ export interface IItem {
 }
 
 export interface IMediaItem extends IItem {
-  file?: File;
+  file: File;
 }
 
 export interface IVideoItem extends IMediaItem {
