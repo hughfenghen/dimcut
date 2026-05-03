@@ -234,7 +234,7 @@ interface TimelineProps {
 - 输出格式：ES module
 - 外部化 solid-js 依赖
 - package.json 配置 exports、types、peerDependencies
-- 包名：`open-zingai`
+- 包名：`dimcut`
 
 ### 11. 素材渲染
 
@@ -266,7 +266,7 @@ interface TimelineProps {
 - [x] 任务11：创建 `src/lib/index.ts`，导出 Timeline 组件和所有公开类型，验收点：`import { Timeline } from './lib'` 可用
 - [x] 任务12：创建 `src/demo/mock-data.ts`，构造包含主轨道视频（30s）+ ASR 数据（多个 segment/word）+ 多个覆盖素材（音频、图片）+ 删除区间的模拟数据，验收点：数据结构符合类型定义
 - [x] 任务13：创建 `src/demo/App.tsx` 和更新 `src/index.tsx`、`src/index.css`，搭建开发演示页面，引入 Timeline 组件传入 mock 数据，包含 pixelsPerSecond 缩放滑块控件，验收点：`pnpm dev` 可在浏览器中查看完整时间轴演示
-- [x] 任务14：配置 Vite library mode 构建（vite.config.ts 添加 build.lib 配置，入口 src/lib/index.ts，格式 es，外部化 solid-js）；更新 package.json 添加 exports、types、peerDependencies 字段，包名 `open-zingai`，验收点：`pnpm build` 输出 dist/ 目录包含 es 模块和类型声明
+- [x] 任务14：配置 Vite library mode 构建（vite.config.ts 添加 build.lib 配置，入口 src/lib/index.ts，格式 es，外部化 solid-js）；更新 package.json 添加 exports、types、peerDependencies 字段，包名 `dimcut`，验收点：`pnpm build` 输出 dist/ 目录包含 es 模块和类型声明
 - [x] 任务15：为 layout.ts 和 time-utils.ts 编写完整的 vitest 单元测试文件（`src/lib/__tests__/layout.test.ts` 和 `time-utils.test.ts`），验收点：`pnpm test` 全部通过
 
 ## 执行记录
