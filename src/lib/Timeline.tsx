@@ -1,4 +1,13 @@
-import { type Component, For, Show, createSignal, createMemo, createEffect, on, onCleanup, onMount } from "solid-js";
+import {
+  type Component,
+  For,
+  Show,
+  createSignal,
+  createMemo,
+  createEffect,
+  on,
+  onCleanup,
+} from "solid-js";
 import type {
   DeletedRange,
   Item,
@@ -18,14 +27,18 @@ export const Timeline: Component<TimelineProps> = (props) => {
   const pps = () => props.pixelsPerSecond ?? DEFAULT_PIXELS_PER_SECOND;
 
   const totalDuration = () =>
-    props.initData.mainTrackConf.item.endTime - props.initData.mainTrackConf.item.startTime;
+    props.initData.mainTrackConf.item.endTime -
+    props.initData.mainTrackConf.item.startTime;
 
   const [items, setItems] = createSignal<Item[]>(props.initData.items);
   const [deletedRanges, setDeletedRanges] = createSignal<DeletedRange[]>(
     props.initData.deletedRanges ?? [],
   );
 
-  const emitChange = (nextItems = items(), nextDeletedRanges = deletedRanges()) => {
+  const emitChange = (
+    nextItems = items(),
+    nextDeletedRanges = deletedRanges(),
+  ) => {
     props.onChange?.({
       mainTrackConf: props.initData.mainTrackConf,
       items: nextItems,
@@ -53,9 +66,7 @@ export const Timeline: Component<TimelineProps> = (props) => {
 
   const mainTrackItem = () => props.initData.mainTrackConf.item;
 
-  const itemsByRow = createMemo(() =>
-    assignItemsToRows(items(), rows()),
-  );
+  const itemsByRow = createMemo(() => assignItemsToRows(items(), rows()));
 
   const mainSlicesByRow = createMemo(() => {
     const mainItem = mainTrackItem();
@@ -73,7 +84,9 @@ export const Timeline: Component<TimelineProps> = (props) => {
   });
 
   // --- Thumbnail extractor ---
-  const [extractor, setExtractor] = createSignal<ThumbnailExtractor | undefined>();
+  const [extractor, setExtractor] = createSignal<
+    ThumbnailExtractor | undefined
+  >();
 
   createEffect(
     on(
@@ -96,7 +109,9 @@ export const Timeline: Component<TimelineProps> = (props) => {
   });
 
   // --- Waveform extractor ---
-  const [waveformExt, setWaveformExt] = createSignal<WaveformExtractor | undefined>();
+  const [waveformExt, setWaveformExt] = createSignal<
+    WaveformExtractor | undefined
+  >();
 
   createEffect(
     on(
@@ -180,6 +195,9 @@ export const Timeline: Component<TimelineProps> = (props) => {
   const [selectionEnd, setSelectionEnd] = createSignal(0);
   const [isSelecting, setIsSelecting] = createSignal(false);
   const [hasSelection, setHasSelection] = createSignal(false);
+  const [selectionSource, setSelectionSource] = createSignal<
+    "media" | "asr" | null
+  >(null);
 
   const selectionRange = createMemo(() => {
     if (!isSelecting() && !hasSelection()) return null;
@@ -189,10 +207,63 @@ export const Timeline: Component<TimelineProps> = (props) => {
     return { start: s, end: e };
   });
 
+  const handleAsrSelectionChange = () => {
+    const sel = window.getSelection();
+    if (!sel || sel.isCollapsed || sel.rangeCount === 0) {
+      if (selectionSource() === "asr") {
+        setHasSelection(false);
+        setSelectionSource(null);
+      }
+      return;
+    }
+
+    const range = sel.getRangeAt(0);
+    const startNode = range.startContainer;
+    const endNode = range.endContainer;
+
+    const startEl =
+      startNode instanceof HTMLElement
+        ? startNode.closest("[data-asr-word]")
+        : startNode.parentElement?.closest("[data-asr-word]") ?? null;
+    const endEl =
+      endNode instanceof HTMLElement
+        ? endNode.closest("[data-asr-word]")
+        : endNode.parentElement?.closest("[data-asr-word]") ?? null;
+
+    if (!startEl || !endEl) {
+      if (selectionSource() === "asr") {
+        setHasSelection(false);
+        setSelectionSource(null);
+      }
+      return;
+    }
+
+    const startTime = parseFloat(
+      startEl.getAttribute("data-asr-word-start") ?? "0",
+    );
+    const endTime = parseFloat(
+      endEl.getAttribute("data-asr-word-end") ?? "0",
+    );
+
+    if (endTime - startTime < 0.001) return;
+
+    setSelectionSource("asr");
+    setSelectionStart(startTime);
+    setSelectionEnd(endTime);
+    setIsSelecting(false);
+    setHasSelection(true);
+  };
+
+  document.addEventListener("selectionchange", handleAsrSelectionChange);
+  onCleanup(() =>
+    document.removeEventListener("selectionchange", handleAsrSelectionChange),
+  );
+
   // Convert mouse position to global time using row DOM elements
   const mouseToTime = (clientX: number, clientY: number): number => {
     if (!containerRef) return 0;
-    const rowEls = containerRef.querySelectorAll<HTMLElement>("[data-row-index]");
+    const rowEls =
+      containerRef.querySelectorAll<HTMLElement>("[data-row-index]");
     const currentRows = rows();
     if (rowEls.length === 0 || currentRows.length === 0) return 0;
 
@@ -226,7 +297,8 @@ export const Timeline: Component<TimelineProps> = (props) => {
     }
 
     // Find the content area (skip time label)
-    const contentEl = targetEl!.querySelector<HTMLElement>("[data-row-content]");
+    const contentEl =
+      targetEl!.querySelector<HTMLElement>("[data-row-content]");
     if (!contentEl) return targetRow.startTime;
 
     const contentRect = contentEl.getBoundingClientRect();
@@ -236,8 +308,8 @@ export const Timeline: Component<TimelineProps> = (props) => {
   };
 
   const handleRangeSelectStart = (e: MouseEvent, rowStartTime: number) => {
-    // Calculate initial time from the row content area
-    const contentEl = (e.currentTarget as HTMLElement);
+    window.getSelection()?.removeAllRanges();
+    const contentEl = e.currentTarget as HTMLElement;
     const rect = contentEl.getBoundingClientRect();
     const px = e.clientX - rect.left;
     const time = pixelToTime(px, rowStartTime, pps());
@@ -250,6 +322,7 @@ export const Timeline: Component<TimelineProps> = (props) => {
     setSelectionEnd(clampedTime);
     setIsSelecting(true);
     setHasSelection(false);
+    setSelectionSource("media");
 
     let moved = false;
 
@@ -301,6 +374,8 @@ export const Timeline: Component<TimelineProps> = (props) => {
     setDeletedRanges(merged);
     emitChange(items(), merged);
     setHasSelection(false);
+    setSelectionSource(null);
+    window.getSelection()?.removeAllRanges();
   };
 
   // Compute floating menu position
@@ -329,8 +404,10 @@ export const Timeline: Component<TimelineProps> = (props) => {
       }
     }
 
-    const rowEls = containerRef.querySelectorAll<HTMLElement>("[data-row-index]");
-    if (firstOverlapRowIdx < 0 || firstOverlapRowIdx >= rowEls.length) return null;
+    const rowEls =
+      containerRef.querySelectorAll<HTMLElement>("[data-row-index]");
+    if (firstOverlapRowIdx < 0 || firstOverlapRowIdx >= rowEls.length)
+      return null;
 
     const firstRowEl = rowEls[firstOverlapRowIdx];
     const containerRect = containerRef.getBoundingClientRect();
@@ -340,10 +417,19 @@ export const Timeline: Component<TimelineProps> = (props) => {
     const firstRow = currentRows[firstOverlapRowIdx];
     const selStartInRow = Math.max(sel.start, firstRow.startTime);
     const selEndInRow = Math.min(sel.end, firstRow.endTime);
-    const leftPx = (selStartInRow - firstRow.startTime) * pps() + TIME_LABEL_WIDTH;
-    const rightPx = (selEndInRow - firstRow.startTime) * pps() + TIME_LABEL_WIDTH;
+    const leftPx =
+      (selStartInRow - firstRow.startTime) * pps() + TIME_LABEL_WIDTH;
+    const rightPx =
+      (selEndInRow - firstRow.startTime) * pps() + TIME_LABEL_WIDTH;
     const centerX = (leftPx + rightPx) / 2;
-    const topY = rowRect.top - containerRect.top;
+    let topY = rowRect.top - containerRect.top;
+
+    if (selectionSource() === "media") {
+      const asrEl = firstRowEl.querySelector("[data-asr-track]");
+      if (asrEl) {
+        topY += asrEl.offsetHeight;
+      }
+    }
 
     return { x: centerX, y: topY };
   });
@@ -365,8 +451,7 @@ export const Timeline: Component<TimelineProps> = (props) => {
         {(row) => {
           const mainSlices = () => mainSlicesByRow().get(row.rowIndex) ?? [];
           const mainSlice = () => mainSlices()[0];
-          const overlayLayers = () =>
-            layersByRow().get(row.rowIndex) ?? [];
+          const overlayLayers = () => layersByRow().get(row.rowIndex) ?? [];
 
           return (
             <div class="border-b border-gray-200" data-row-index={row.rowIndex}>
@@ -394,12 +479,17 @@ export const Timeline: Component<TimelineProps> = (props) => {
         <For each={rows()}>
           {(row) => {
             const time = () => props.currentTime!;
-            const isInRow = () => time() >= row.startTime && time() < row.endTime;
+            const isInRow = () =>
+              time() >= row.startTime && time() < row.endTime;
             return (
               <Show when={isInRow()}>
                 {(() => {
-                  const leftPx = () => (time() - row.startTime) * pps() + TIME_LABEL_WIDTH;
-                  const rowEl = () => containerRef?.querySelector<HTMLElement>(`[data-row-index="${row.rowIndex}"]`);
+                  const leftPx = () =>
+                    (time() - row.startTime) * pps() + TIME_LABEL_WIDTH;
+                  const rowEl = () =>
+                    containerRef?.querySelector<HTMLElement>(
+                      `[data-row-index="${row.rowIndex}"]`,
+                    );
                   const top = () => {
                     const el = rowEl();
                     if (!el || !containerRef) return 0;
@@ -444,8 +534,17 @@ export const Timeline: Component<TimelineProps> = (props) => {
               title="删除区间"
               onClick={handleDeleteSelection}
             >
-              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" class="w-4 h-4">
-                <path fill-rule="evenodd" d="M8.75 1A2.75 2.75 0 006 3.75v.443c-.795.077-1.584.176-2.365.298a.75.75 0 10.23 1.482l.149-.022.841 10.518A2.75 2.75 0 007.596 19h4.807a2.75 2.75 0 002.742-2.53l.841-10.519.149.023a.75.75 0 00.23-1.482A41.03 41.03 0 0014 4.193V3.75A2.75 2.75 0 0011.25 1h-2.5zM10 4c.84 0 1.673.025 2.5.075V3.75c0-.69-.56-1.25-1.25-1.25h-2.5c-.69 0-1.25.56-1.25 1.25v.325C8.327 4.025 9.16 4 10 4zM8.58 7.72a.75.75 0 00-1.5.06l.3 7.5a.75.75 0 101.5-.06l-.3-7.5zm4.34.06a.75.75 0 10-1.5-.06l-.3 7.5a.75.75 0 101.5.06l.3-7.5z" clip-rule="evenodd" />
+              <svg
+                xmlns="http://www.w3.org/2000/svg"
+                viewBox="0 0 20 20"
+                fill="currentColor"
+                class="w-4 h-4"
+              >
+                <path
+                  fill-rule="evenodd"
+                  d="M8.75 1A2.75 2.75 0 006 3.75v.443c-.795.077-1.584.176-2.365.298a.75.75 0 10.23 1.482l.149-.022.841 10.518A2.75 2.75 0 007.596 19h4.807a2.75 2.75 0 002.742-2.53l.841-10.519.149.023a.75.75 0 00.23-1.482A41.03 41.03 0 0014 4.193V3.75A2.75 2.75 0 0011.25 1h-2.5zM10 4c.84 0 1.673.025 2.5.075V3.75c0-.69-.56-1.25-1.25-1.25h-2.5c-.69 0-1.25.56-1.25 1.25v.325C8.327 4.025 9.16 4 10 4zM8.58 7.72a.75.75 0 00-1.5.06l.3 7.5a.75.75 0 101.5-.06l-.3-7.5zm4.34.06a.75.75 0 10-1.5-.06l-.3 7.5a.75.75 0 101.5.06l.3-7.5z"
+                  clip-rule="evenodd"
+                />
               </svg>
             </button>
 
