@@ -224,11 +224,11 @@ export const Timeline: Component<TimelineProps> = (props) => {
     const startEl =
       startNode instanceof HTMLElement
         ? startNode.closest("[data-asr-word]")
-        : startNode.parentElement?.closest("[data-asr-word]") ?? null;
+        : (startNode.parentElement?.closest("[data-asr-word]") ?? null);
     const endEl =
       endNode instanceof HTMLElement
         ? endNode.closest("[data-asr-word]")
-        : endNode.parentElement?.closest("[data-asr-word]") ?? null;
+        : (endNode.parentElement?.closest("[data-asr-word]") ?? null);
 
     if (!startEl || !endEl) {
       if (selectionSource() === "asr") {
@@ -241,9 +241,7 @@ export const Timeline: Component<TimelineProps> = (props) => {
     const startTime = parseFloat(
       startEl.getAttribute("data-asr-word-start") ?? "0",
     );
-    const endTime = parseFloat(
-      endEl.getAttribute("data-asr-word-end") ?? "0",
-    );
+    const endTime = parseFloat(endEl.getAttribute("data-asr-word-end") ?? "0");
 
     if (endTime - startTime < 0.001) return;
 
@@ -383,8 +381,19 @@ export const Timeline: Component<TimelineProps> = (props) => {
     const sel = selectionRange();
     if (!sel || !hasSelection() || !containerRef) return null;
 
+    const containerRect = containerRef.getBoundingClientRect();
+
+    if (selectionSource() === "asr") {
+      const domSel = window.getSelection();
+      if (!domSel || domSel.rangeCount === 0) return null;
+      const rangeRect = domSel.getRangeAt(0).getBoundingClientRect();
+      return {
+        x: rangeRect.left + rangeRect.width / 2 - containerRect.left,
+        y: rangeRect.top - containerRect.top,
+      };
+    }
+
     const currentRows = rows();
-    // Find the last row that overlaps with the selection
     let lastOverlapRowIdx = -1;
     for (let i = 0; i < currentRows.length; i++) {
       const row = currentRows[i];
@@ -394,7 +403,6 @@ export const Timeline: Component<TimelineProps> = (props) => {
     }
     if (lastOverlapRowIdx < 0) return null;
 
-    // Find the first row that overlaps for positioning the menu at the top
     let firstOverlapRowIdx = -1;
     for (let i = 0; i < currentRows.length; i++) {
       const row = currentRows[i];
@@ -410,10 +418,8 @@ export const Timeline: Component<TimelineProps> = (props) => {
       return null;
 
     const firstRowEl = rowEls[firstOverlapRowIdx];
-    const containerRect = containerRef.getBoundingClientRect();
     const rowRect = firstRowEl.getBoundingClientRect();
 
-    // Position menu at the center of the selection's first row, above it
     const firstRow = currentRows[firstOverlapRowIdx];
     const selStartInRow = Math.max(sel.start, firstRow.startTime);
     const selEndInRow = Math.min(sel.end, firstRow.endTime);
@@ -424,11 +430,11 @@ export const Timeline: Component<TimelineProps> = (props) => {
     const centerX = (leftPx + rightPx) / 2;
     let topY = rowRect.top - containerRect.top;
 
-    if (selectionSource() === "media") {
-      const asrEl = firstRowEl.querySelector("[data-asr-track]");
-      if (asrEl) {
-        topY += asrEl.offsetHeight;
-      }
+    const asrEl = firstRowEl.querySelector(
+      "[data-asr-track]",
+    ) as HTMLSpanElement | null;
+    if (asrEl) {
+      topY += asrEl.offsetHeight;
     }
 
     return { x: centerX, y: topY };
@@ -468,6 +474,8 @@ export const Timeline: Component<TimelineProps> = (props) => {
                 selectionRange={selectionRange() ?? undefined}
                 thumbnailExtractor={extractor()}
                 waveformExtractor={waveformExt()}
+                showAsrTrack={props.showAsrTrack}
+                showMediaTracks={props.showMediaTracks}
               />
             </div>
           );
@@ -475,7 +483,7 @@ export const Timeline: Component<TimelineProps> = (props) => {
       </For>
 
       {/* Playhead indicator */}
-      <Show when={props.currentTime !== undefined}>
+      <Show when={props.currentTime !== undefined && props.showMediaTracks}>
         <For each={rows()}>
           {(row) => {
             const time = () => props.currentTime!;
@@ -490,14 +498,29 @@ export const Timeline: Component<TimelineProps> = (props) => {
                     containerRef?.querySelector<HTMLElement>(
                       `[data-row-index="${row.rowIndex}"]`,
                     );
+                  const contentEl = () =>
+                    rowEl()?.querySelector<HTMLElement>("[data-row-content]");
                   const top = () => {
+                    const _ = pps();
                     const el = rowEl();
-                    if (!el || !containerRef) return 0;
-                    return el.offsetTop;
+                    const ce = contentEl();
+                    if (!el || !containerRef || !ce) return 0;
+                    const mtTop = parseFloat(
+                      ce.getAttribute("data-main-track-top") ?? "0",
+                    );
+                    return el.offsetTop + mtTop;
                   };
                   const height = () => {
+                    const _ = pps();
                     const el = rowEl();
-                    return el ? el.offsetHeight : 0;
+                    const ce = contentEl();
+                    if (!el) return 0;
+                    const mtTop = ce
+                      ? parseFloat(
+                          ce.getAttribute("data-main-track-top") ?? "0",
+                        )
+                      : 0;
+                    return el.offsetHeight - mtTop;
                   };
                   return (
                     <div

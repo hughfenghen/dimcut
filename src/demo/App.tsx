@@ -65,21 +65,71 @@ const App: Component = () => {
   const [pps, setPps] = createSignal(80);
   const [currentTime, setCurrentTime] = createSignal(0);
   const [isPlaying, setIsPlaying] = createSignal(false);
+  const [showAsrTrack, setShowAsrTrack] = createSignal(true);
+  const [showMediaTracks, setShowMediaTracks] = createSignal(true);
 
   return (
     <div class="min-w-[1400px] max-w-[1400px] mx-auto p-4">
       <h1 class="text-xl font-bold mb-4">Open ZingAI - Timeline Demo</h1>
 
-      <div class="mb-4 flex items-center gap-4">
-        <label class="text-sm">Pixels per second: {pps()}</label>
-        <input
-          type="range"
-          min="20"
-          max="200"
-          value={pps()}
-          onInput={(e) => setPps(Number(e.currentTarget.value))}
-          class="w-48"
-        />
+      <div class="mb-4 flex items-center gap-3">
+        <div class="flex items-center gap-1">
+          <button
+            class="w-4 h-4 flex items-center justify-center rounded-full border border-gray-700 text-gray-700 hover:bg-gray-100"
+            onClick={() => setPps(Math.max(5, Math.round(pps() * 0.8)))}
+          >
+            <svg
+              viewBox="0 0 16 16"
+              class="w-3.5 h-3.5"
+              fill="none"
+              stroke="currentColor"
+              stroke-width="2"
+            >
+              <line x1="4" y1="8" x2="12" y2="8" />
+            </svg>
+          </button>
+          <input
+            type="range"
+            min="5"
+            max="600"
+            value={pps()}
+            onInput={(e) => setPps(Number(e.currentTarget.value))}
+            class="w-30 h-1 appearance-auto accent-black cursor-pointer"
+          />
+          <button
+            class="w-4 h-4 flex items-center justify-center rounded-full border border-gray-700 text-gray-700 hover:bg-gray-100"
+            onClick={() => setPps(Math.min(600, Math.round(pps() * 1.2)))}
+          >
+            <svg
+              viewBox="0 0 16 16"
+              class="w-3.5 h-3.5"
+              fill="none"
+              stroke="currentColor"
+              stroke-width="2"
+            >
+              <line x1="8" y1="4" x2="8" y2="12" />
+              <line x1="4" y1="8" x2="12" y2="8" />
+            </svg>
+          </button>
+        </div>
+        <label class="text-sm text-black flex items-center gap-1">
+          <input
+            type="checkbox"
+            checked={showAsrTrack()}
+            onChange={(e) => setShowAsrTrack(e.currentTarget.checked)}
+            class="accent-black"
+          />
+          ASR
+        </label>
+        <label class="text-sm text-black flex items-center gap-1">
+          <input
+            type="checkbox"
+             checked={showMediaTracks()}
+             onChange={(e) => setShowMediaTracks(e.currentTarget.checked)}
+            class="accent-black"
+          />
+           媒体轨道
+        </label>
       </div>
 
       {demoData.loading && (
@@ -100,6 +150,8 @@ const App: Component = () => {
               onChange={(arg) => {
                 console.log("onChange", arg);
               }}
+              showAsrTrack={showAsrTrack()}
+               showMediaTracks={showMediaTracks()}
             />
           </div>
 

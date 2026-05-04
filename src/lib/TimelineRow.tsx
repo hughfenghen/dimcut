@@ -35,27 +35,38 @@ export interface TimelineRowProps {
   selectionRange?: { start: number; end: number };
   thumbnailExtractor?: ThumbnailExtractor;
   waveformExtractor?: WaveformExtractor;
+  showAsrTrack?: boolean;
+  showMediaTracks?: boolean;
 }
 
 export const TimelineRow: Component<TimelineRowProps> = (props) => {
-  const hasAsr = () => !!props.asrData;
+  const hasAsr = () => !!props.asrData && props.showAsrTrack !== false;
   const [asrHeight, setAsrHeight] = createSignal(ASR_TRACK_HEIGHT);
+
+  const effectiveLayers = () =>
+    props.showMediaTracks === false ? [] : props.layers;
+
+  const effectiveMainTrack = () =>
+    props.showMediaTracks === false ? undefined : props.mainTrackSlice;
 
   const layerCount = () => {
     let count = 0;
-    for (const layer of props.layers) {
+    for (const layer of effectiveLayers()) {
       const maxSubRow = layer.reduce((m, s) => Math.max(m, s.subRow), 0);
       count += maxSubRow + 1;
     }
     return count;
   };
 
-  const mainTrackRows = () => (props.mainTrackSlice ? 1 : 0);
+  const mainTrackRows = () => (effectiveMainTrack() ? 1 : 0);
 
   const mainTrackHeight = () => {
-    const slice = props.mainTrackSlice;
+    const slice = effectiveMainTrack();
     if (!slice) return MAIN_TRACK_HEIGHT;
-    if (slice.item.type === "video" && props.waveformExtractor?.hasAudioTrack()) {
+    if (
+      slice.item.type === "video" &&
+      props.waveformExtractor?.hasAudioTrack()
+    ) {
       return MAIN_TRACK_HEIGHT + 20;
     }
     if (slice.item.type === "audio") {
@@ -68,7 +79,8 @@ export const TimelineRow: Component<TimelineRowProps> = (props) => {
     const asr = hasAsr() ? asrHeight() : 0;
     const main = mainTrackRows() * mainTrackHeight();
     const lc = layerCount();
-    const overlays = lc > 0 ? lc * (ROW_ITEM_HEIGHT + TRACK_GAP) - TRACK_GAP : 0;
+    const overlays =
+      lc > 0 ? lc * (ROW_ITEM_HEIGHT + TRACK_GAP) - TRACK_GAP : 0;
     let gapCount = 0;
     if (asr > 0 && main > 0) gapCount++;
     if (asr > 0 && overlays > 0 && main === 0) gapCount++;
@@ -82,8 +94,7 @@ export const TimelineRow: Component<TimelineRowProps> = (props) => {
 
   const nonAsrTop = () => mainTrackTop();
 
-  const nonAsrHeight = () =>
-    Math.max(0, totalContentHeight() - nonAsrTop());
+  const nonAsrHeight = () => Math.max(0, totalContentHeight() - nonAsrTop());
 
   const overlayBaseTop = () => {
     let top = mainTrackTop() + mainTrackRows() * mainTrackHeight();
@@ -152,8 +163,9 @@ export const TimelineRow: Component<TimelineRowProps> = (props) => {
         style={{ height: `${totalContentHeight()}px` }}
         onMouseDown={handleMouseDown}
         data-row-content
+        data-main-track-top={mainTrackTop()}
       >
-        <Show when={props.asrData}>
+        <Show when={props.showAsrTrack && props.asrData}>
           {(asr) => (
             <AsrTrack
               asrData={asr()}
@@ -165,7 +177,7 @@ export const TimelineRow: Component<TimelineRowProps> = (props) => {
           )}
         </Show>
 
-        <Show when={props.mainTrackSlice}>
+        <Show when={effectiveMainTrack()}>
           {(slice) => {
             const left = () =>
               timeToPixel(
@@ -178,10 +190,7 @@ export const TimelineRow: Component<TimelineRowProps> = (props) => {
               props.pixelsPerSecond;
 
             return (
-              <div
-                class="absolute"
-                style={{ top: `${mainTrackTop()}px` }}
-              >
+              <div class="absolute" style={{ top: `${mainTrackTop()}px` }}>
                 {slice().item.type === "video" && props.thumbnailExtractor ? (
                   <VideoTrackItem
                     extractor={props.thumbnailExtractor}
@@ -216,21 +225,25 @@ export const TimelineRow: Component<TimelineRowProps> = (props) => {
           }}
         </Show>
 
-        <For each={props.layers}>
+        <For each={effectiveLayers()}>
           {(layer, layerIdx) => (
             <For each={layer}>
               {(slice) => {
                 const top = () => {
                   let cumulativeTop = overlayBaseTop();
+                  const layers = effectiveLayers();
                   for (let i = 0; i < layerIdx(); i++) {
-                    const prevLayer = props.layers[i];
+                    const prevLayer = layers[i];
                     const maxSub = prevLayer.reduce(
                       (m, s) => Math.max(m, s.subRow),
                       0,
                     );
-                    cumulativeTop += (maxSub + 1) * (ROW_ITEM_HEIGHT + TRACK_GAP);
+                    cumulativeTop +=
+                      (maxSub + 1) * (ROW_ITEM_HEIGHT + TRACK_GAP);
                   }
-                  return cumulativeTop + slice.subRow * (ROW_ITEM_HEIGHT + TRACK_GAP);
+                  return (
+                    cumulativeTop + slice.subRow * (ROW_ITEM_HEIGHT + TRACK_GAP)
+                  );
                 };
 
                 return (

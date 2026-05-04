@@ -35,19 +35,23 @@ describe("pixelToTime", () => {
 
 describe("formatTime", () => {
   it("formats 0 seconds", () => {
-    expect(formatTime(0)).toBe("00:00");
+    expect(formatTime(0)).toBe("00:00.00");
   });
 
   it("formats seconds with padding", () => {
-    expect(formatTime(5)).toBe("00:05");
+    expect(formatTime(5)).toBe("00:05.00");
   });
 
   it("formats minutes and seconds", () => {
-    expect(formatTime(65)).toBe("01:05");
+    expect(formatTime(65)).toBe("01:05.00");
   });
 
-  it("floors fractional seconds", () => {
-    expect(formatTime(9.7)).toBe("00:09");
+  it("shows two decimal places", () => {
+    expect(formatTime(9.7)).toBe("00:09.70");
+  });
+
+  it("formats fractional seconds with two decimals", () => {
+    expect(formatTime(65.42)).toBe("01:05.42");
   });
 });
 

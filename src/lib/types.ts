@@ -76,6 +76,8 @@ export interface TimelineProps {
   selectionMenuItems?: SelectionMenuItem[];
   currentTime?: number;
   onSeek?: (time: number) => void;
+  showAsrTrack?: boolean;
+  showMediaTracks?: boolean;
 }
 
 export interface RowLayout {

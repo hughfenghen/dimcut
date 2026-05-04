@@ -1,4 +1,4 @@
-import type { AsrData, AsrWord, DeletedRange } from "./types.ts";
+import type { AsrData, AsrSegment, AsrWord, DeletedRange } from "./types.ts";
 
 export interface AsrWordView extends AsrWord {
   isDeleted: boolean;
@@ -28,6 +28,31 @@ export function getAsrWordsForRow(
   }
   words.sort((a, b) => a.start - b.start);
   return words;
+}
+
+export function getAsrSegmentsForRow(
+  asrData: AsrData,
+  rowStartTime: number,
+  rowEndTime: number,
+): AsrSegment[] {
+  const segments: AsrSegment[] = [];
+  for (const seg of asrData.segments) {
+    const words: AsrWord[] = [];
+    for (const w of seg.words) {
+      if (w.start >= rowStartTime && w.start < rowEndTime) {
+        words.push({ word: w.word, start: w.start, end: w.end });
+      }
+    }
+    if (words.length > 0) {
+      segments.push({
+        start: words[0].start,
+        end: words[words.length - 1].end,
+        text: words.map((w) => w.word).join(""),
+        words,
+      });
+    }
+  }
+  return segments;
 }
 
 export function isAsrWordDeleted(word: AsrWord, deletedRanges: DeletedRange[]): boolean {
