@@ -9,6 +9,8 @@ export interface AsrTrackProps {
   rowStartTime: number;
   rowEndTime: number;
   onHeightChange?: (height: number) => void;
+  currentTime?: number;
+  onSeek?: (time: number) => void;
 }
 
 export const AsrTrack: Component<AsrTrackProps> = (props) => {
@@ -39,6 +41,16 @@ export const AsrTrack: Component<AsrTrackProps> = (props) => {
     onCleanup(() => observer.disconnect());
   };
 
+  const isWordActive = (w: { start: number; end: number }) => {
+    const t = props.currentTime;
+    return t !== undefined && t >= w.start && t < w.end;
+  };
+
+  const handleWordClick = (e: MouseEvent, start: number) => {
+    e.stopPropagation();
+    props.onSeek?.(start);
+  };
+
   return (
     <div
       ref={setupResizeObserver}
@@ -55,11 +67,14 @@ export const AsrTrack: Component<AsrTrackProps> = (props) => {
                   class={
                     w.isDeleted
                       ? "rounded-[2px] bg-red-300/50 line-through px-[1px]"
-                      : "px-[1px]"
+                      : isWordActive(w)
+                        ? "rounded-[2px] bg-[#bbb] p-[2px]"
+                        : "px-[1px]"
                   }
                   data-asr-word
                   data-asr-word-start={w.start}
                   data-asr-word-end={w.end}
+                  onClick={(e) => handleWordClick(e, w.start)}
                 >
                   {w.word}
                 </span>

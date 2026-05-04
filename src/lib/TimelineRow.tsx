@@ -35,6 +35,8 @@ export interface TimelineRowProps {
   selectionRange?: { start: number; end: number };
   thumbnailExtractor?: ThumbnailExtractor;
   waveformExtractor?: WaveformExtractor;
+  currentTime?: number;
+  onSeek?: (time: number) => void;
   showAsrTrack?: boolean;
   showMediaTracks?: boolean;
 }
@@ -42,6 +44,12 @@ export interface TimelineRowProps {
 export const TimelineRow: Component<TimelineRowProps> = (props) => {
   const hasAsr = () => !!props.asrData && props.showAsrTrack !== false;
   const [asrHeight, setAsrHeight] = createSignal(ASR_TRACK_HEIGHT);
+
+  const asrCurrentTime = () => {
+    const t = props.currentTime;
+    if (t === undefined) return undefined;
+    return t >= props.row.startTime && t < props.row.endTime ? t : undefined;
+  };
 
   const effectiveLayers = () =>
     props.showMediaTracks === false ? [] : props.layers;
@@ -173,6 +181,8 @@ export const TimelineRow: Component<TimelineRowProps> = (props) => {
               rowStartTime={props.row.startTime}
               rowEndTime={props.row.endTime}
               onHeightChange={setAsrHeight}
+              currentTime={asrCurrentTime()}
+              onSeek={props.onSeek}
             />
           )}
         </Show>

@@ -474,6 +474,8 @@ export const Timeline: Component<TimelineProps> = (props) => {
                 selectionRange={selectionRange() ?? undefined}
                 thumbnailExtractor={extractor()}
                 waveformExtractor={waveformExt()}
+                currentTime={props.currentTime}
+                onSeek={props.onSeek}
                 showAsrTrack={props.showAsrTrack}
                 showMediaTracks={props.showMediaTracks}
               />
@@ -501,7 +503,6 @@ export const Timeline: Component<TimelineProps> = (props) => {
                   const contentEl = () =>
                     rowEl()?.querySelector<HTMLElement>("[data-row-content]");
                   const top = () => {
-                    const _ = pps();
                     const el = rowEl();
                     const ce = contentEl();
                     if (!el || !containerRef || !ce) return 0;
@@ -511,7 +512,6 @@ export const Timeline: Component<TimelineProps> = (props) => {
                     return el.offsetTop + mtTop;
                   };
                   const height = () => {
-                    const _ = pps();
                     const el = rowEl();
                     const ce = contentEl();
                     if (!el) return 0;
