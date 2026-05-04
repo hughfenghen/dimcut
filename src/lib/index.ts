@@ -1,4 +1,6 @@
 export { Timeline } from "./Timeline.tsx";
+export { PreviewPlayer } from "./PreviewPlayer.tsx";
+export type { PreviewPlayerProps } from "./PreviewPlayer.tsx";
 export { VideoTrackItem } from "./VideoTrackItem.tsx";
 export { AudioTrackItem } from "./AudioTrackItem.tsx";
 export {

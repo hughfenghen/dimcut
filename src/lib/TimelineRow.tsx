@@ -168,7 +168,6 @@ export const TimelineRow: Component<TimelineRowProps> = (props) => {
               <div
                 class="absolute"
                 style={{ top: `${mainTrackTop()}px` }}
-                data-track-item
               >
                 {slice().item.type === "video" && props.thumbnailExtractor ? (
                   <VideoTrackItem

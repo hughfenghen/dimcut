@@ -1,5 +1,6 @@
 import { type Component, createSignal, createResource } from "solid-js";
 import { Timeline } from "../lib/index.ts";
+import { PreviewPlayer } from "../lib/PreviewPlayer.tsx";
 import type { AsrData, IChangeEventData } from "../lib/types.ts";
 
 async function loadDemoData(): Promise<IChangeEventData> {
@@ -62,9 +63,11 @@ function getVideoDuration(file: File): Promise<number> {
 const App: Component = () => {
   const [demoData] = createResource(loadDemoData);
   const [pps, setPps] = createSignal(80);
+  const [currentTime, setCurrentTime] = createSignal(0);
+  const [isPlaying, setIsPlaying] = createSignal(false);
 
   return (
-    <div class="max-w-4xl mx-auto p-4">
+    <div class="mx-auto p-4">
       <h1 class="text-xl font-bold mb-4">Open ZingAI - Timeline Demo</h1>
 
       <div class="mb-4 flex items-center gap-4">
@@ -86,13 +89,28 @@ const App: Component = () => {
       )}
 
       {demoData() && (
-        <div class="border border-gray-300 rounded bg-white">
-          <Timeline
-            initData={demoData()!}
-            pixelsPerSecond={pps()}
-            onChange={(arg) => {
-              console.log("onChange", arg);
-            }}
+        <div class="flex gap-4 items-start">
+          {/* Left: Timeline */}
+          <div class="w-[800px] border border-gray-300 rounded bg-white flex-shrink-0">
+            <Timeline
+              initData={demoData()!}
+              pixelsPerSecond={pps()}
+              currentTime={currentTime()}
+              onSeek={(time) => setCurrentTime(time)}
+              onChange={(arg) => {
+                console.log("onChange", arg);
+              }}
+            />
+          </div>
+
+          {/* Right: Preview Player */}
+          <PreviewPlayer
+            mainTrackConf={demoData()!.mainTrackConf}
+            currentTime={currentTime()}
+            isPlaying={isPlaying()}
+            onTimeUpdate={setCurrentTime}
+            onPlayPause={setIsPlaying}
+            onSeek={setCurrentTime}
           />
         </div>
       )}
@@ -100,7 +118,7 @@ const App: Component = () => {
       <div class="mt-4 text-xs text-gray-500">
         <p>
           拖拽覆盖素材可移动位置 | 在空白区域拖拽可创建删除区间 |
-          悬停删除区间可移除
+          悬停删除区间可移除 | 点击时间轴跳转播放位置
         </p>
       </div>
     </div>

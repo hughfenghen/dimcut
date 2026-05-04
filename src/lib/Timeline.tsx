@@ -1,4 +1,4 @@
-import { type Component, For, Show, createSignal, createMemo, createEffect, on, onCleanup } from "solid-js";
+import { type Component, For, Show, createSignal, createMemo, createEffect, on, onCleanup, onMount } from "solid-js";
 import type {
   DeletedRange,
   Item,
@@ -133,7 +133,17 @@ export const Timeline: Component<TimelineProps> = (props) => {
     // Clear any active selection when starting a drag
     setHasSelection(false);
 
+    const startX = e.clientX;
+    const startY = e.clientY;
+    let moved = false;
+
     const onMove = (me: MouseEvent) => {
+      const dx = me.clientX - startX;
+      const dy = me.clientY - startY;
+      if (Math.abs(dx) > 3 || Math.abs(dy) > 3) {
+        moved = true;
+      }
+      if (!moved) return;
       const id = dragItemId();
       if (!id) return;
       const currentMouseTime = mouseToTime(me.clientX, me.clientY);
@@ -154,6 +164,11 @@ export const Timeline: Component<TimelineProps> = (props) => {
       setDragItemId(null);
       window.removeEventListener("mousemove", onMove);
       window.removeEventListener("mouseup", onUp);
+      // If no drag happened, treat as seek
+      if (!moved && props.onSeek) {
+        const time = mouseToTime(startX, startY);
+        props.onSeek(time);
+      }
     };
 
     window.addEventListener("mousemove", onMove);
@@ -228,12 +243,22 @@ export const Timeline: Component<TimelineProps> = (props) => {
     const time = pixelToTime(px, rowStartTime, pps());
     const clampedTime = Math.max(0, Math.min(time, totalDuration()));
 
+    const startX = e.clientX;
+    const startY = e.clientY;
+
     setSelectionStart(clampedTime);
     setSelectionEnd(clampedTime);
     setIsSelecting(true);
     setHasSelection(false);
 
+    let moved = false;
+
     const onMove = (me: MouseEvent) => {
+      const dx = me.clientX - startX;
+      const dy = me.clientY - startY;
+      if (Math.abs(dx) > 3 || Math.abs(dy) > 3) {
+        moved = true;
+      }
       const t = mouseToTime(me.clientX, me.clientY);
       setSelectionEnd(t);
     };
@@ -249,6 +274,10 @@ export const Timeline: Component<TimelineProps> = (props) => {
         setHasSelection(true);
       } else {
         setHasSelection(false);
+        // If no drag happened, treat as seek
+        if (!moved && props.onSeek) {
+          props.onSeek(clampedTime);
+        }
       }
     };
 
@@ -359,6 +388,43 @@ export const Timeline: Component<TimelineProps> = (props) => {
           );
         }}
       </For>
+
+      {/* Playhead indicator */}
+      <Show when={props.currentTime !== undefined}>
+        <For each={rows()}>
+          {(row) => {
+            const time = () => props.currentTime!;
+            const isInRow = () => time() >= row.startTime && time() < row.endTime;
+            return (
+              <Show when={isInRow()}>
+                {(() => {
+                  const leftPx = () => (time() - row.startTime) * pps() + TIME_LABEL_WIDTH;
+                  const rowEl = () => containerRef?.querySelector<HTMLElement>(`[data-row-index="${row.rowIndex}"]`);
+                  const top = () => {
+                    const el = rowEl();
+                    if (!el || !containerRef) return 0;
+                    return el.offsetTop;
+                  };
+                  const height = () => {
+                    const el = rowEl();
+                    return el ? el.offsetHeight : 0;
+                  };
+                  return (
+                    <div
+                      class="absolute top-0 w-[2px] bg-red-500 pointer-events-none z-50"
+                      style={{
+                        left: `${leftPx()}px`,
+                        top: `${top()}px`,
+                        height: `${height()}px`,
+                      }}
+                    />
+                  );
+                })()}
+              </Show>
+            );
+          }}
+        </For>
+      </Show>
 
       {/* Floating selection menu */}
       <Show when={hasSelection() && menuPosition()}>

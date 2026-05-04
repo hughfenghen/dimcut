@@ -74,6 +74,8 @@ export interface TimelineProps {
   pixelsPerSecond?: number;
   onChange?: (data: IChangeEventData) => void;
   selectionMenuItems?: SelectionMenuItem[];
+  currentTime?: number;
+  onSeek?: (time: number) => void;
 }
 
 export interface RowLayout {
