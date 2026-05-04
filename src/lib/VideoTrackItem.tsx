@@ -67,6 +67,16 @@ export const VideoTrackItem: Component<VideoTrackItemProps> = (props) => {
     // Align startTime to step grid
     const alignedStart = Math.floor(props.visibleStart / step) * step;
 
+    // Load waveform data synchronously (no decoding, just downsample)
+    if (props.waveformExtractor?.hasAudioTrack()) {
+      const data = props.waveformExtractor.extract(
+        props.visibleStart,
+        props.visibleEnd,
+        pps,
+      );
+      setWaveformData(data);
+    }
+
     for await (const { time, canvas: thumbCanvas } of props.extractor.extract(
       alignedStart,
       props.visibleEnd,
@@ -74,16 +84,6 @@ export const VideoTrackItem: Component<VideoTrackItemProps> = (props) => {
     )) {
       const x = (time - props.visibleStart) * pps;
       ctx.drawImage(thumbCanvas as CanvasImageSource, x, 0, thumbnailWidth, height);
-    }
-
-    // Load waveform data if available
-    if (props.waveformExtractor?.hasAudioTrack()) {
-      const data = await props.waveformExtractor.extract(
-        props.visibleStart,
-        props.visibleEnd,
-        pps,
-      );
-      setWaveformData(data);
     }
 
     hasDrawn = true;
@@ -121,6 +121,19 @@ export const VideoTrackItem: Component<VideoTrackItemProps> = (props) => {
         if (!hasDrawn || props.pixelsPerSecond !== lastDrawnPps) {
           throttledDraw();
         }
+      },
+    ),
+  );
+
+  // Load waveform when extractor becomes available after init
+  createEffect(
+    on(
+      () => props.waveformExtractor,
+      (ext) => {
+        if (!ext?.hasAudioTrack() || !isVisible()) return;
+        const pps = props.pixelsPerSecond;
+        const data = ext.extract(props.visibleStart, props.visibleEnd, pps);
+        setWaveformData(data);
       },
     ),
   );

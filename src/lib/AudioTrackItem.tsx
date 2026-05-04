@@ -20,9 +20,9 @@ export const AudioTrackItem: Component<AudioTrackItemProps> = (props) => {
   let hasDrawn = false;
   let lastDrawnPps = 0;
 
-  const loadWaveform = async () => {
+  const loadWaveform = () => {
     const pps = props.pixelsPerSecond;
-    const data = await props.extractor.extract(
+    const data = props.extractor.extract(
       props.visibleStart,
       props.visibleEnd,
       pps,
