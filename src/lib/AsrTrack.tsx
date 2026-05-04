@@ -1,45 +1,55 @@
-import { type Component, For } from "solid-js";
-import type { AsrData } from "./types.ts";
+import { type Component, For, createMemo, onCleanup } from "solid-js";
+import type { AsrData, DeletedRange } from "./types.ts";
 import { ASR_TRACK_HEIGHT } from "./constants.ts";
-import { timeToPixel } from "./time-utils.ts";
+import { getAsrWordsForRow, isAsrWordDeleted } from "./asr-utils.ts";
 
 export interface AsrTrackProps {
   asrData: AsrData;
+  deletedRanges: DeletedRange[];
   rowStartTime: number;
   rowEndTime: number;
-  pixelsPerSecond: number;
+  onHeightChange?: (height: number) => void;
 }
 
 export const AsrTrack: Component<AsrTrackProps> = (props) => {
-  const visibleWords = () => {
-    const words: { word: string; left: number }[] = [];
-    for (const seg of props.asrData.segments) {
-      for (const w of seg.words) {
-        if (w.end <= props.rowStartTime || w.start >= props.rowEndTime) continue;
-        words.push({
-          word: w.word,
-          left: timeToPixel(
-            Math.max(w.start, props.rowStartTime),
-            props.rowStartTime,
-            props.pixelsPerSecond,
-          ),
-        });
-      }
-    }
-    return words;
+  let trackRef: HTMLDivElement | undefined;
+
+  const visibleWords = createMemo(() =>
+    getAsrWordsForRow(props.asrData, props.rowStartTime, props.rowEndTime).map((w) => ({
+      ...w,
+      isDeleted: isAsrWordDeleted(w, props.deletedRanges),
+    })),
+  );
+
+  const setupResizeObserver = (el: HTMLDivElement) => {
+    trackRef = el;
+    props.onHeightChange?.(Math.max(el.offsetHeight, ASR_TRACK_HEIGHT));
+    const observer = new ResizeObserver(() => {
+      if (!trackRef) return;
+      props.onHeightChange?.(Math.max(trackRef.offsetHeight, ASR_TRACK_HEIGHT));
+    });
+    observer.observe(el);
+    onCleanup(() => observer.disconnect());
   };
 
   return (
-    <div class="relative" style={{ height: `${ASR_TRACK_HEIGHT}px` }}>
+    <div
+      ref={setupResizeObserver}
+      class="relative min-h-6 leading-6 px-1 text-sm text-black whitespace-pre-wrap break-words select-text"
+      data-asr-track
+      style={{ "min-height": `${ASR_TRACK_HEIGHT}px` }}
+    >
       <For each={visibleWords()}>
         {(w) => (
           <span
-            class="absolute text-sm font-medium text-black whitespace-nowrap"
-            style={{
-              left: `${w.left}px`,
-              top: "0",
-              "line-height": `${ASR_TRACK_HEIGHT}px`,
-            }}
+            class={
+              w.isDeleted
+                ? "rounded-[2px] bg-red-300/50 line-through px-[1px]"
+                : "px-[1px]"
+            }
+            data-asr-word
+            data-asr-word-start={w.start}
+            data-asr-word-end={w.end}
           >
             {w.word}
           </span>

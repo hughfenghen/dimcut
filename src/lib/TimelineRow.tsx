@@ -1,4 +1,4 @@
-import { type Component, For, Show } from "solid-js";
+import { type Component, For, Show, createSignal } from "solid-js";
 import type {
   AsrData,
   DeletedRange,
@@ -39,6 +39,7 @@ export interface TimelineRowProps {
 
 export const TimelineRow: Component<TimelineRowProps> = (props) => {
   const hasAsr = () => !!props.asrData;
+  const [asrHeight, setAsrHeight] = createSignal(ASR_TRACK_HEIGHT);
 
   const layerCount = () => {
     let count = 0;
@@ -64,7 +65,7 @@ export const TimelineRow: Component<TimelineRowProps> = (props) => {
   };
 
   const totalContentHeight = () => {
-    const asr = hasAsr() ? ASR_TRACK_HEIGHT : 0;
+    const asr = hasAsr() ? asrHeight() : 0;
     const main = mainTrackRows() * mainTrackHeight();
     const lc = layerCount();
     const overlays = lc > 0 ? lc * (ROW_ITEM_HEIGHT + TRACK_GAP) - TRACK_GAP : 0;
@@ -77,7 +78,12 @@ export const TimelineRow: Component<TimelineRowProps> = (props) => {
     return asr + main + overlays + gaps || ROW_ITEM_HEIGHT;
   };
 
-  const mainTrackTop = () => (hasAsr() ? ASR_TRACK_HEIGHT + TRACK_GAP : 0);
+  const mainTrackTop = () => (hasAsr() ? asrHeight() + TRACK_GAP : 0);
+
+  const nonAsrTop = () => mainTrackTop();
+
+  const nonAsrHeight = () =>
+    Math.max(0, totalContentHeight() - nonAsrTop());
 
   const overlayBaseTop = () => {
     let top = mainTrackTop() + mainTrackRows() * mainTrackHeight();
@@ -107,11 +113,17 @@ export const TimelineRow: Component<TimelineRowProps> = (props) => {
     return { left, width };
   };
 
+  const visibleSelectionOverlay = () => {
+    if (nonAsrHeight() <= 0) return null;
+    return selectionOverlay();
+  };
+
   const handleMouseDown = (e: MouseEvent) => {
     if (e.button !== 0) return;
     const target = e.target as HTMLElement;
     if (
       target.closest("[data-track-item]") ||
+      target.closest("[data-asr-track]") ||
       target.closest("button") ||
       target.closest("[data-selection-menu]")
     )
@@ -145,9 +157,10 @@ export const TimelineRow: Component<TimelineRowProps> = (props) => {
           {(asr) => (
             <AsrTrack
               asrData={asr()}
+              deletedRanges={props.deletedRanges}
               rowStartTime={props.row.startTime}
               rowEndTime={props.row.endTime}
-              pixelsPerSecond={props.pixelsPerSecond}
+              onHeightChange={setAsrHeight}
             />
           )}
         </Show>
@@ -246,28 +259,32 @@ export const TimelineRow: Component<TimelineRowProps> = (props) => {
           )}
         </For>
 
-        <For each={visibleDeletedRanges()}>
-          {(range) => (
-            <DeletedRangeOverlay
-              range={range}
-              rowStartTime={props.row.startTime}
-              rowEndTime={props.row.endTime}
-              pixelsPerSecond={props.pixelsPerSecond}
-              rowHeight={totalContentHeight()}
-              onRemove={props.onRemoveDeletedRange}
-            />
-          )}
-        </For>
+        <Show when={nonAsrHeight() > 0}>
+          <For each={visibleDeletedRanges()}>
+            {(range) => (
+              <DeletedRangeOverlay
+                range={range}
+                rowStartTime={props.row.startTime}
+                rowEndTime={props.row.endTime}
+                pixelsPerSecond={props.pixelsPerSecond}
+                topOffset={nonAsrTop()}
+                rowHeight={nonAsrHeight()}
+                onRemove={props.onRemoveDeletedRange}
+              />
+            )}
+          </For>
+        </Show>
 
         {/* Selection overlay */}
-        <Show when={selectionOverlay()}>
+        <Show when={visibleSelectionOverlay()}>
           {(overlay) => (
             <div
-              class="absolute top-0 z-40 pointer-events-none"
+              class="absolute z-40 pointer-events-none"
               style={{
                 left: `${overlay().left}px`,
                 width: `${overlay().width}px`,
-                height: `${totalContentHeight()}px`,
+                top: `${nonAsrTop()}px`,
+                height: `${nonAsrHeight()}px`,
                 "background-color": "rgba(59, 130, 246, 0.2)",
                 border: "1px solid rgba(59, 130, 246, 0.4)",
               }}

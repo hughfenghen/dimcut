@@ -8,6 +8,7 @@ export interface DeletedRangeProps {
   rowStartTime: number;
   rowEndTime: number;
   pixelsPerSecond: number;
+  topOffset?: number;
   rowHeight: number;
   onRemove?: (range: DeletedRangeType) => void;
 }
@@ -23,10 +24,11 @@ export const DeletedRangeOverlay: Component<DeletedRangeProps> = (props) => {
 
   return (
     <div
-      class="absolute top-0 z-50 pointer-events-none"
+      class="absolute z-50 pointer-events-none"
       style={{
         left: `${left()}px`,
         width: `${width()}px`,
+        top: `${props.topOffset ?? 0}px`,
         height: `${props.rowHeight}px`,
         "background-color": DELETED_RANGE_COLOR,
       }}
