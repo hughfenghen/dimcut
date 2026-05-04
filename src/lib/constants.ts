@@ -1,11 +1,9 @@
 export const ITEM_COLORS: Record<string, string> = {
-  video: "#4A3728",
-  audio: "#E8A840",
-  image: "#F5E6C8",
-  text: "transparent",
+  video: "#FF8702",
+  audio: "#FFCEE1",
+  image: "#B7E5D2",
+  text: "#C9F0FF",
 };
-
-export const OVERLAY_AUDIO_COLOR = "#F0A0B0";
 export const DELETED_RANGE_COLOR = "rgba(255, 100, 100, 0.3)";
 
 export const DEFAULT_PIXELS_PER_SECOND = 80;

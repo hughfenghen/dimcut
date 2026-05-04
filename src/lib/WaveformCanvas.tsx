@@ -26,8 +26,12 @@ export const WaveformCanvas: Component<WaveformCanvasProps> = (props) => {
     const barWidth = props.barWidth ?? 2;
     const gap = props.gap ?? 1;
 
-    canvas.width = width;
-    canvas.height = height;
+    const dpr = window.devicePixelRatio || 1;
+    canvas.width = width * dpr;
+    canvas.height = height * dpr;
+    canvas.style.width = `${width}px`;
+    canvas.style.height = `${height}px`;
+    ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
     ctx.clearRect(0, 0, width, height);
 
     if (data.length === 0) return;
@@ -62,8 +66,11 @@ export const WaveformCanvas: Component<WaveformCanvasProps> = (props) => {
       const halfBarHeight = Math.max(0.5, normalized * centerY);
       const x = i * step;
 
-      // Draw mirrored bar centered vertically
-      ctx.fillRect(x, centerY - halfBarHeight, barWidth, halfBarHeight * 2);
+      // Draw mirrored bar centered vertically with rounded corners
+      const radius = Math.min(2, barWidth / 2);
+      ctx.beginPath();
+      ctx.roundRect(x, centerY - halfBarHeight, barWidth, halfBarHeight * 2, radius);
+      ctx.fill();
     }
   };
 

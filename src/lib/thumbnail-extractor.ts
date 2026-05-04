@@ -73,9 +73,10 @@ export class ThumbnailExtractor {
       MAIN_TRACK_HEIGHT * (trackWidth / trackHeight),
     );
 
+    const dpr = window.devicePixelRatio || 1;
     this.sink = new CanvasSink(this.videoTrack, {
-      width: thumbWidth,
-      height: MAIN_TRACK_HEIGHT,
+      width: Math.round(thumbWidth * dpr),
+      height: Math.round(MAIN_TRACK_HEIGHT * dpr),
       fit: "cover",
     });
   }

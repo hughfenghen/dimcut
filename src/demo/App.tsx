@@ -67,7 +67,7 @@ const App: Component = () => {
   const [isPlaying, setIsPlaying] = createSignal(false);
 
   return (
-    <div class="mx-auto p-4">
+    <div class="min-w-[1400px] max-w-[1400px] mx-auto p-4">
       <h1 class="text-xl font-bold mb-4">Open ZingAI - Timeline Demo</h1>
 
       <div class="mb-4 flex items-center gap-4">

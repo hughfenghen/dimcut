@@ -1,6 +1,6 @@
 import { type Component } from "solid-js";
 import type { Item } from "./types.ts";
-import { ITEM_COLORS, OVERLAY_AUDIO_COLOR, ROW_ITEM_HEIGHT } from "./constants.ts";
+import { ITEM_COLORS, ROW_ITEM_HEIGHT } from "./constants.ts";
 
 export interface TrackItemProps {
   item: Item;
@@ -12,9 +12,6 @@ export interface TrackItemProps {
 
 export const TrackItem: Component<TrackItemProps> = (props) => {
   const color = () => {
-    if (props.item.type === "audio" && !props.isMainTrack) {
-      return OVERLAY_AUDIO_COLOR;
-    }
     return ITEM_COLORS[props.item.type] ?? "#999";
   };
 
