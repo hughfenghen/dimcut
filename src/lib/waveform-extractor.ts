@@ -64,8 +64,6 @@ export class WaveformExtractor {
   extract(startTime: number, endTime: number, pps: number): Float32Array {
     if (this.rawPeaks.length === 0) return new Float32Array(0);
 
-    console.time("[Waveform] extract downsample");
-
     const totalPixels = Math.ceil((endTime - startTime) * pps);
     const result = new Float32Array(totalPixels);
 
@@ -74,7 +72,10 @@ export class WaveformExtractor {
       const t1 = startTime + (i + 1) / pps;
 
       const rawStart = Math.max(0, Math.floor(t0 * RAW_PEAKS_PER_SEC));
-      const rawEnd = Math.min(this.rawPeaks.length, Math.ceil(t1 * RAW_PEAKS_PER_SEC));
+      const rawEnd = Math.min(
+        this.rawPeaks.length,
+        Math.ceil(t1 * RAW_PEAKS_PER_SEC),
+      );
 
       let peak = 0;
       for (let j = rawStart; j < rawEnd; j++) {
@@ -83,7 +84,6 @@ export class WaveformExtractor {
       result[i] = peak;
     }
 
-    console.timeEnd("[Waveform] extract downsample");
     return result;
   }
 
@@ -107,8 +107,14 @@ export class WaveformExtractor {
         const peakEndTime = (peakIdx + 1) / RAW_PEAKS_PER_SEC;
 
         // Sample range within this buffer
-        const sampleStart = Math.max(0, Math.floor((peakStartTime - bufferStartTime) * sampleRate));
-        const sampleEnd = Math.min(channelData.length, Math.ceil((peakEndTime - bufferStartTime) * sampleRate));
+        const sampleStart = Math.max(
+          0,
+          Math.floor((peakStartTime - bufferStartTime) * sampleRate),
+        );
+        const sampleEnd = Math.min(
+          channelData.length,
+          Math.ceil((peakEndTime - bufferStartTime) * sampleRate),
+        );
 
         if (sampleStart >= channelData.length) break;
         if (sampleEnd <= 0) continue;

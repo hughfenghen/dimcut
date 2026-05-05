@@ -1,10 +1,11 @@
 import { type Component, createSignal, createEffect, on, onCleanup, Show } from "solid-js";
-import type { IMainTrackConf } from "./types.ts";
+import type { IMainTrackConf, DeletedRange } from "./types.ts";
 
 export interface PreviewPlayerProps {
   mainTrackConf: IMainTrackConf;
   currentTime: number;
   isPlaying: boolean;
+  deletedRanges?: DeletedRange[];
   onTimeUpdate: (time: number) => void;
   onPlayPause: (playing: boolean) => void;
   onSeek: (time: number) => void;
@@ -39,6 +40,15 @@ export const PreviewPlayer: Component<PreviewPlayerProps> = (props) => {
 
   const mediaEl = () => (isVideo() ? videoRef : audioRef);
 
+  const skipIfDeleted = (time: number): number => {
+    const ranges = props.deletedRanges;
+    if (!ranges) return time;
+    for (const r of ranges) {
+      if (time >= r.start && time < r.end) return r.end;
+    }
+    return time;
+  };
+
   // Sync external currentTime to media element (only when not self-playing)
   let isSelfUpdate = false;
 
@@ -48,8 +58,10 @@ export const PreviewPlayer: Component<PreviewPlayerProps> = (props) => {
       (time) => {
         if (isSelfUpdate) return;
         const el = mediaEl();
-        if (el && Math.abs(el.currentTime - time) > 0.1) {
-          el.currentTime = time;
+        if (!el) return;
+        const target = skipIfDeleted(time);
+        if (Math.abs(el.currentTime - target) > 0.1) {
+          el.currentTime = target;
         }
       },
     ),
@@ -78,6 +90,10 @@ export const PreviewPlayer: Component<PreviewPlayerProps> = (props) => {
     const tick = () => {
       const el = mediaEl();
       if (el && !el.paused) {
+        const skipped = skipIfDeleted(el.currentTime);
+        if (skipped !== el.currentTime) {
+          el.currentTime = skipped;
+        }
         isSelfUpdate = true;
         props.onTimeUpdate(el.currentTime);
         isSelfUpdate = false;

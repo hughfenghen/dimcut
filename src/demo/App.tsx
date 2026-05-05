@@ -1,7 +1,7 @@
 import { type Component, createSignal, createResource } from "solid-js";
 import { Timeline } from "../lib/index.ts";
 import { PreviewPlayer } from "../lib/PreviewPlayer.tsx";
-import type { AsrData, IChangeEventData } from "../lib/types.ts";
+import type { AsrData, DeletedRange, IChangeEventData } from "../lib/types.ts";
 
 async function loadDemoData(): Promise<IChangeEventData> {
   const [videoResp, asrResp] = await Promise.all([
@@ -67,6 +67,7 @@ const App: Component = () => {
   const [isPlaying, setIsPlaying] = createSignal(false);
   const [showAsrTrack, setShowAsrTrack] = createSignal(true);
   const [showMediaTracks, setShowMediaTracks] = createSignal(true);
+  const [deletedRanges, setDeletedRanges] = createSignal<DeletedRange[]>([]);
 
   return (
     <div class="min-w-[1400px] max-w-[1400px] mx-auto p-4">
@@ -149,6 +150,7 @@ const App: Component = () => {
               onSeek={(time) => setCurrentTime(time)}
               onChange={(arg) => {
                 console.log("onChange", arg);
+                setDeletedRanges(arg.deletedRanges ?? []);
               }}
               showAsrTrack={showAsrTrack()}
                showMediaTracks={showMediaTracks()}
@@ -160,6 +162,7 @@ const App: Component = () => {
             mainTrackConf={demoData()!.mainTrackConf}
             currentTime={currentTime()}
             isPlaying={isPlaying()}
+            deletedRanges={deletedRanges()}
             onTimeUpdate={setCurrentTime}
             onPlayPause={setIsPlaying}
             onSeek={setCurrentTime}
