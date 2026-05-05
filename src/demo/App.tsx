@@ -1,6 +1,7 @@
 import { type Component, createSignal, createResource } from "solid-js";
 import { Timeline } from "../lib/index.ts";
 import { PreviewPlayer } from "../lib/PreviewPlayer.tsx";
+import { exportVideo } from "../lib/video-exporter.ts";
 import type { AsrData, DeletedRange, IChangeEventData } from "../lib/types.ts";
 
 async function loadDemoData(): Promise<IChangeEventData> {
@@ -68,6 +69,19 @@ const App: Component = () => {
   const [showAsrTrack, setShowAsrTrack] = createSignal(true);
   const [showMediaTracks, setShowMediaTracks] = createSignal(true);
   const [deletedRanges, setDeletedRanges] = createSignal<DeletedRange[]>([]);
+  const [exporting, setExporting] = createSignal(false);
+
+  const handleExport = async () => {
+    const data = demoData();
+    if (!data || exporting()) return;
+    setExporting(true);
+    try {
+      const item = data.mainTrackConf.item;
+      await exportVideo(item.file, deletedRanges(), item.endTime - item.startTime);
+    } finally {
+      setExporting(false);
+    }
+  };
 
   return (
     <div class="min-w-[1400px] max-w-[1400px] mx-auto p-4">
@@ -131,6 +145,15 @@ const App: Component = () => {
           />
            媒体轨道
         </label>
+        <div class="ml-auto">
+          <button
+            class="px-3 py-1 text-sm bg-black text-white rounded hover:bg-gray-800 disabled:opacity-50 disabled:cursor-not-allowed"
+            onClick={handleExport}
+            disabled={exporting() || !demoData()}
+          >
+            {exporting() ? "导出中..." : "导出"}
+          </button>
+        </div>
       </div>
 
       {demoData.loading && (
