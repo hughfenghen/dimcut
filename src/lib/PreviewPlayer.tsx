@@ -134,7 +134,7 @@ export const PreviewPlayer: Component<PreviewPlayerProps> = (props) => {
   const duration = () => props.mainTrackConf.item.endTime - props.mainTrackConf.item.startTime;
 
   return (
-    <div class="w-[600px] sticky top-4">
+    <div class="w-full">
       <Show when={isVideo()}>
         <video
           ref={videoRef}

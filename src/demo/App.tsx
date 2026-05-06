@@ -1,8 +1,15 @@
-import { type Component, createSignal, createResource } from "solid-js";
+import { type Component, createSignal, createResource, For, Show } from "solid-js";
 import { Timeline } from "../lib/index.ts";
 import { PreviewPlayer } from "../lib/PreviewPlayer.tsx";
-import { exportVideo } from "../lib/video-exporter.ts";
-import type { AsrData, DeletedRange, IChangeEventData } from "../lib/types.ts";
+import { exportVideo, exportClips } from "../lib/video-exporter.ts";
+import { formatTime } from "../lib/time-utils.ts";
+import type {
+  AsrData,
+  DeletedRange,
+  IChangeEventData,
+  Clip,
+  SelectionMenuItem,
+} from "../lib/types.ts";
 
 async function loadDemoData(): Promise<IChangeEventData> {
   const [videoResp, asrResp] = await Promise.all([
@@ -70,6 +77,10 @@ const App: Component = () => {
   const [showMediaTracks, setShowMediaTracks] = createSignal(true);
   const [deletedRanges, setDeletedRanges] = createSignal<DeletedRange[]>([]);
   const [exporting, setExporting] = createSignal(false);
+  const [clips, setClips] = createSignal<Clip[]>([]);
+  const [exportingClips, setExportingClips] = createSignal(false);
+  const [dragIndex, setDragIndex] = createSignal<number | null>(null);
+  const [dragOverIndex, setDragOverIndex] = createSignal<number | null>(null);
 
   const handleExport = async () => {
     const data = demoData();
@@ -85,6 +96,85 @@ const App: Component = () => {
     } finally {
       setExporting(false);
     }
+  };
+
+  const handleExportClips = async () => {
+    const data = demoData();
+    if (!data || exportingClips() || clips().length === 0) return;
+    setExportingClips(true);
+    try {
+      await exportClips(data.mainTrackConf.item.file, clips());
+    } finally {
+      setExportingClips(false);
+    }
+  };
+
+  const selectionMenuItems: SelectionMenuItem[] = [
+    {
+      icon: () => (
+        <svg
+          xmlns="http://www.w3.org/2000/svg"
+          viewBox="0 0 20 20"
+          fill="currentColor"
+          class="w-4 h-4"
+        >
+          <path
+            fill-rule="evenodd"
+            d="M10 18a8 8 0 100-16 8 8 0 000 16zm.75-11.25a.75.75 0 00-1.5 0v2.5h-2.5a.75.75 0 000 1.5h2.5v2.5a.75.75 0 001.5 0v-2.5h2.5a.75.75 0 000-1.5h-2.5v-2.5z"
+            clip-rule="evenodd"
+          />
+        </svg>
+      ),
+      label: "添加片段",
+      onClick: (selection) => {
+        setClips((prev) => [
+          ...prev,
+          {
+            id: crypto.randomUUID(),
+            start: selection.start,
+            end: selection.end,
+          },
+        ]);
+      },
+    },
+  ];
+
+  const handleDragStart = (index: number, e: DragEvent) => {
+    setDragIndex(index);
+    if (e.dataTransfer) {
+      e.dataTransfer.effectAllowed = "move";
+    }
+  };
+
+  const handleDragOver = (index: number, e: DragEvent) => {
+    e.preventDefault();
+    if (e.dataTransfer) {
+      e.dataTransfer.dropEffect = "move";
+    }
+    setDragOverIndex(index);
+  };
+
+  const handleDrop = (targetIndex: number, e: DragEvent) => {
+    e.preventDefault();
+    const from = dragIndex();
+    if (from === null || from === targetIndex) {
+      setDragIndex(null);
+      setDragOverIndex(null);
+      return;
+    }
+    setClips((prev) => {
+      const arr = [...prev];
+      const [moved] = arr.splice(from, 1);
+      arr.splice(targetIndex > from ? targetIndex - 1 : targetIndex, 0, moved);
+      return arr;
+    });
+    setDragIndex(null);
+    setDragOverIndex(null);
+  };
+
+  const handleDragEnd = () => {
+    setDragIndex(null);
+    setDragOverIndex(null);
   };
 
   return (
@@ -156,7 +246,7 @@ const App: Component = () => {
               onClick={handleExport}
               disabled={exporting() || !demoData()}
             >
-              {exporting() ? "导出中..." : "导出"}
+              {exporting() ? "导出中..." : "导出裁剪"}
             </button>
           </div>
         </div>
@@ -182,19 +272,90 @@ const App: Component = () => {
                 }}
                 showAsrTrack={showAsrTrack()}
                 showMediaTracks={showMediaTracks()}
+                selectionMenuItems={selectionMenuItems}
               />
             </div>
 
-            {/* Right: Preview Player */}
-            <PreviewPlayer
-              mainTrackConf={demoData()!.mainTrackConf}
-              currentTime={currentTime()}
-              isPlaying={isPlaying()}
-              deletedRanges={deletedRanges()}
-              onTimeUpdate={setCurrentTime}
-              onPlayPause={setIsPlaying}
-              onSeek={setCurrentTime}
-            />
+            {/* Right: Preview Player + Clips */}
+            <div class="flex-1 min-w-0 sticky top-4 max-h-screen overflow-y-auto">
+              <PreviewPlayer
+                mainTrackConf={demoData()!.mainTrackConf}
+                currentTime={currentTime()}
+                isPlaying={isPlaying()}
+                deletedRanges={deletedRanges()}
+                onTimeUpdate={setCurrentTime}
+                onPlayPause={setIsPlaying}
+                onSeek={setCurrentTime}
+              />
+
+              {/* Clips List */}
+              <div class="mt-4 border border-gray-300 rounded bg-white p-3">
+                <div class="flex items-center justify-between mb-2">
+                  <h3 class="text-sm font-semibold text-gray-800">片段</h3>
+                  <Show when={clips().length > 0}>
+                    <button
+                      class="px-2 py-0.5 text-xs bg-black text-white rounded hover:bg-gray-800 disabled:opacity-50 disabled:cursor-not-allowed"
+                      onClick={handleExportClips}
+                      disabled={exportingClips()}
+                    >
+                      {exportingClips() ? "导出中..." : "导出片段"}
+                    </button>
+                  </Show>
+                </div>
+
+                <Show
+                  when={clips().length > 0}
+                  fallback={
+                    <div class="text-xs text-gray-400 py-4 text-center">
+                      在时间轴上选择区间，点击 + 按钮添加片段
+                    </div>
+                  }
+                >
+                  <div class="flex flex-col gap-1">
+                    <For each={clips()}>
+                      {(clip, index) => (
+                        <div
+                          class={`flex items-center gap-2 px-2 py-1.5 rounded border text-sm cursor-pointer hover:bg-gray-50 select-none ${
+                            dragOverIndex() === index()
+                              ? "border-black"
+                              : "border-gray-200"
+                          }`}
+                          onClick={() => setCurrentTime(clip.start)}
+                          draggable={true}
+                          onDragStart={(e) => handleDragStart(index(), e)}
+                          onDragOver={(e) => handleDragOver(index(), e)}
+                          onDrop={(e) => handleDrop(index(), e)}
+                          onDragEnd={handleDragEnd}
+                        >
+                          {/* Drag handle */}
+                          <span class="text-gray-300 cursor-grab text-xs">⠿</span>
+                          {/* Index */}
+                          <span class="text-gray-400 text-xs w-4 text-center">
+                            {index() + 1}
+                          </span>
+                          {/* Time range */}
+                          <span class="text-gray-700 text-xs flex-1">
+                            {formatTime(clip.start)} - {formatTime(clip.end)}
+                          </span>
+                          {/* Delete button */}
+                          <button
+                            class="text-gray-300 hover:text-red-500 text-xs"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              setClips((prev) =>
+                                prev.filter((c) => c.id !== clip.id),
+                              );
+                            }}
+                          >
+                            ✕
+                          </button>
+                        </div>
+                      )}
+                    </For>
+                  </div>
+                </Show>
+              </div>
+            </div>
           </div>
         )}
 

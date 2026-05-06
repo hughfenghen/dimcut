@@ -10,11 +10,20 @@ import {
   BlobSource,
   ALL_FORMATS,
 } from "mediabunny";
-import type { DeletedRange } from "./types.ts";
+import type { DeletedRange, Clip } from "./types.ts";
 
 interface Segment {
   start: number;
   end: number;
+}
+
+interface ExportPipeline {
+  input: Input;
+  videoTrack: Awaited<ReturnType<Input["getPrimaryVideoTrack"]>>;
+  audioTrack: Awaited<ReturnType<Input["getPrimaryAudioTrack"]>>;
+  videoSource: VideoSampleSource;
+  audioSource: AudioSampleSource;
+  output: Output;
 }
 
 export function computeValidSegments(
@@ -56,17 +65,8 @@ function computeTimeOffset(
   return offset;
 }
 
-export async function exportVideo(
-  file: File,
-  deletedRanges: DeletedRange[],
-  duration: number,
-): Promise<void> {
-  const segments = computeValidSegments(duration, deletedRanges);
-  if (segments.length === 0) return;
-
-  const sortedRanges = [...deletedRanges].sort((a, b) => a.start - b.start);
-
-  const fileHandle = await window.showSaveFilePicker({
+async function createExportPipeline(file: File): Promise<ExportPipeline> {
+  const fileHandle = await (window as any).showSaveFilePicker({
     suggestedName: "exported-video.mp4",
     types: [
       {
@@ -105,23 +105,49 @@ export async function exportVideo(
 
   await output.start();
 
+  return {
+    input,
+    videoTrack,
+    audioTrack,
+    videoSource,
+    audioSource,
+    output,
+  };
+}
+
+async function finalizePipeline(pipeline: ExportPipeline): Promise<void> {
+  pipeline.videoSource.close();
+  pipeline.audioSource.close();
+  await pipeline.output.finalize();
+}
+
+export async function exportVideo(
+  file: File,
+  deletedRanges: DeletedRange[],
+  duration: number,
+): Promise<void> {
+  const segments = computeValidSegments(duration, deletedRanges);
+  if (segments.length === 0) return;
+
+  const sortedRanges = [...deletedRanges].sort((a, b) => a.start - b.start);
+  const pipeline = await createExportPipeline(file);
+
   // Process video frames
-  if (videoTrack) {
-    const videoSink = new VideoSampleSink(videoTrack);
+  if (pipeline.videoTrack) {
+    const videoSink = new VideoSampleSink(pipeline.videoTrack);
     for (const segment of segments) {
       for await (const frame of videoSink.samples(segment.start, segment.end)) {
         const offset = computeTimeOffset(frame.timestamp, sortedRanges);
         frame.setTimestamp(frame.timestamp - offset);
-        await videoSource.add(frame);
+        await pipeline.videoSource.add(frame);
         frame.close();
       }
     }
   }
-  videoSource.close();
 
   // Process audio samples
-  if (audioTrack) {
-    const audioSink = new AudioSampleSink(audioTrack);
+  if (pipeline.audioTrack) {
+    const audioSink = new AudioSampleSink(pipeline.audioTrack);
     for (const segment of segments) {
       for await (const sample of audioSink.samples(
         segment.start,
@@ -129,13 +155,52 @@ export async function exportVideo(
       )) {
         const offset = computeTimeOffset(sample.timestamp, sortedRanges);
         sample.setTimestamp(sample.timestamp - offset);
-        await audioSource.add(sample);
+        await pipeline.audioSource.add(sample);
         sample.close();
       }
     }
   }
-  audioSource.close();
 
-  await output.finalize();
-  await writableStream.close();
+  await finalizePipeline(pipeline);
+}
+
+export async function exportClips(
+  file: File,
+  clips: Clip[],
+): Promise<void> {
+  if (clips.length === 0) return;
+
+  const pipeline = await createExportPipeline(file);
+  let accumulatedDuration = 0;
+
+  // Process video frames
+  if (pipeline.videoTrack) {
+    const videoSink = new VideoSampleSink(pipeline.videoTrack);
+    for (const clip of clips) {
+      for await (const frame of videoSink.samples(clip.start, clip.end)) {
+        frame.setTimestamp(Math.max(0, frame.timestamp - clip.start + accumulatedDuration));
+        await pipeline.videoSource.add(frame);
+        frame.close();
+      }
+      accumulatedDuration += clip.end - clip.start;
+    }
+  }
+
+  // Reset for audio pass
+  accumulatedDuration = 0;
+
+  // Process audio samples
+  if (pipeline.audioTrack) {
+    const audioSink = new AudioSampleSink(pipeline.audioTrack);
+    for (const clip of clips) {
+      for await (const sample of audioSink.samples(clip.start, clip.end)) {
+        sample.setTimestamp(Math.max(0, sample.timestamp - clip.start + accumulatedDuration));
+        await pipeline.audioSource.add(sample);
+        sample.close();
+      }
+      accumulatedDuration += clip.end - clip.start;
+    }
+  }
+
+  await finalizePipeline(pipeline);
 }

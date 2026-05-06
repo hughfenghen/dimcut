@@ -57,6 +57,12 @@ export interface DeletedRange {
   end: number;
 }
 
+export interface Clip {
+  id: string;
+  start: number;
+  end: number;
+}
+
 export interface IChangeEventData {
   items: Item[];
   mainTrackConf: IMainTrackConf;

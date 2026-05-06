@@ -28,4 +28,7 @@ export type {
   RowItemSlice,
   RowData,
   SelectionMenuItem,
+  Clip,
 } from "./types.ts";
+export { exportVideo } from "./video-exporter.ts";
+export { exportClips } from "./video-exporter.ts";
