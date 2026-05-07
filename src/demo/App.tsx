@@ -1,7 +1,7 @@
 import {
   type Component,
   createSignal,
-  createResource,
+  onMount,
   For,
   Show,
 } from "solid-js";
@@ -13,9 +13,12 @@ import type {
   AsrData,
   DeletedRange,
   IChangeEventData,
+  IMainTrackConf,
+  Item,
   Clip,
   SelectionMenuItem,
 } from "../lib/types.ts";
+import { AssetManagerModal } from "./AssetManagerModal.tsx";
 
 async function loadDemoData(): Promise<IChangeEventData> {
   const [videoResp, asrResp] = await Promise.all([
@@ -29,8 +32,8 @@ async function loadDemoData(): Promise<IChangeEventData> {
   });
 
   const asrData: AsrData = await asrResp.json();
+  asrData.filename = "example-video-asr.json";
 
-  // Get video duration
   const duration = await getVideoDuration(videoFile);
 
   return {
@@ -45,15 +48,7 @@ async function loadDemoData(): Promise<IChangeEventData> {
       },
       asrData,
     },
-    items: [
-      // {
-      //   id: "xxx",
-      //   type: "audio",
-      //   startTime: 0,
-      //   endTime: 10,
-      //   zIndex: 1,
-      // },
-    ],
+    items: [],
     deletedRanges: [],
   };
 }
@@ -67,15 +62,43 @@ function getVideoDuration(file: File): Promise<number> {
       URL.revokeObjectURL(video.src);
     };
     video.onerror = () => {
-      resolve(30); // fallback
+      resolve(30);
       URL.revokeObjectURL(video.src);
     };
     video.src = URL.createObjectURL(file);
   });
 }
 
+function getMediaDuration(file: File): Promise<number> {
+  return new Promise((resolve) => {
+    if (file.type.startsWith("image/")) {
+      resolve(5);
+      return;
+    }
+    const el = file.type.startsWith("video/")
+      ? document.createElement("video")
+      : document.createElement("audio");
+    el.preload = "metadata";
+    el.onloadedmetadata = () => {
+      resolve(el.duration);
+      URL.revokeObjectURL(el.src);
+    };
+    el.onerror = () => {
+      resolve(5);
+      URL.revokeObjectURL(el.src);
+    };
+    el.src = URL.createObjectURL(file);
+  });
+}
+
 const App: Component = () => {
-  const [demoData] = createResource(loadDemoData);
+  const [data, setData] = createSignal<IChangeEventData | null>(null);
+  const [loading, setLoading] = createSignal(true);
+  const [mainTrackDeleted, setMainTrackDeleted] = createSignal(false);
+  const [asrDeleted, setAsrDeleted] = createSignal(false);
+  const [showTimeline, setShowTimeline] = createSignal(true);
+  const [showAssetsModal, setShowAssetsModal] = createSignal(false);
+
   const [pps, setPps] = createSignal(80);
   const [currentTime, setCurrentTime] = createSignal(0);
   const [isPlaying, setIsPlaying] = createSignal(false);
@@ -88,12 +111,103 @@ const App: Component = () => {
   const [dragIndex, setDragIndex] = createSignal<number | null>(null);
   const [dragOverIndex, setDragOverIndex] = createSignal<number | null>(null);
 
+  onMount(async () => {
+    const d = await loadDemoData();
+    setData(d);
+    setLoading(false);
+  });
+
+  const bumpVersion = () => {
+    setShowTimeline(false);
+    queueMicrotask(() => setShowTimeline(true));
+  };
+
+  const handleReplaceMainTrack = async (file: File) => {
+    const d = data();
+    if (!d) return;
+    const duration = await getMediaDuration(file);
+    const isVideo = file.type.startsWith("video/");
+    const newConf: IMainTrackConf = {
+      item: {
+        id: `main-${Date.now()}`,
+        type: isVideo ? ("video" as const) : ("audio" as const),
+        startTime: 0,
+        endTime: duration,
+        zIndex: 0,
+        file,
+      },
+      asrData: asrDeleted() ? undefined : d.mainTrackConf.asrData,
+    };
+    setData({ ...d, mainTrackConf: newConf });
+    setMainTrackDeleted(false);
+    bumpVersion();
+  };
+
+  const handleDeleteMainTrack = () => {
+    setMainTrackDeleted(true);
+  };
+
+  const handleDeleteAsr = () => {
+    const d = data();
+    if (!d) return;
+    setData({
+      ...d,
+      mainTrackConf: { ...d.mainTrackConf, asrData: undefined },
+    });
+    setAsrDeleted(true);
+    bumpVersion();
+  };
+
+  const handleImportAsr = (asrData: AsrData) => {
+    const d = data();
+    if (!d) return;
+    setData({
+      ...d,
+      mainTrackConf: { ...d.mainTrackConf, asrData },
+    });
+    setAsrDeleted(false);
+    bumpVersion();
+  };
+
+  const handleDeleteItem = (id: string) => {
+    const d = data();
+    if (!d) return;
+    setData({ ...d, items: d.items.filter((it) => it.id !== id) });
+    bumpVersion();
+  };
+
+  const handleImportItems = async (files: File[]) => {
+    const d = data();
+    if (!d) return;
+    const maxZ = d.items.reduce((max, it) => Math.max(max, it.zIndex), 0);
+    const newItems: Item[] = [];
+    for (let i = 0; i < files.length; i++) {
+      const file = files[i];
+      const duration = await getMediaDuration(file);
+      let type: "video" | "audio" | "image";
+      if (file.type.startsWith("video/")) type = "video";
+      else if (file.type.startsWith("audio/")) type = "audio";
+      else if (file.type.startsWith("image/")) type = "image";
+      else continue;
+      newItems.push({
+        id: crypto.randomUUID(),
+        type,
+        startTime: 0,
+        endTime: duration,
+        zIndex: maxZ + i + 1,
+        file,
+      } as Item);
+    }
+    setData({ ...d, items: [...d.items, ...newItems] });
+    bumpVersion();
+  };
+
   const handleExport = async () => {
-    const data = demoData();
-    if (!data || exporting()) return;
+    const d = data();
+    if (!d || exporting() || mainTrackDeleted()) return;
     setExporting(true);
     try {
-      const item = data.mainTrackConf.item;
+      const item = d.mainTrackConf.item;
       await exportVideo(
         item.file,
         deletedRanges(),
@@ -105,11 +219,11 @@ const App: Component = () => {
   };
 
   const handleExportClips = async () => {
-    const data = demoData();
-    if (!data || exportingClips() || clips().length === 0) return;
+    const d = data();
+    if (!d || exportingClips() || clips().length === 0) return;
     setExportingClips(true);
     try {
-      await exportClips(data.mainTrackConf.item.file, clips());
+      await exportClips(d.mainTrackConf.item.file, clips());
     } finally {
       setExportingClips(false);
     }
@@ -248,53 +362,78 @@ const App: Component = () => {
           </label>
           <div class="ml-4">
             <button
+              class="px-3 py-1 text-sm bg-white text-black border border-gray-300 rounded hover:bg-gray-50"
+              onClick={() => setShowAssetsModal(true)}
+            >
+              素材管理
+            </button>
+          </div>
+          <div>
+            <button
               class="px-3 py-1 text-sm bg-black text-white rounded hover:bg-gray-800 disabled:opacity-50 disabled:cursor-not-allowed"
               onClick={handleExport}
-              disabled={exporting() || !demoData()}
+              disabled={exporting() || !data() || mainTrackDeleted()}
             >
               {exporting() ? "导出中..." : "导出裁剪"}
             </button>
           </div>
         </div>
 
-        {demoData.loading && (
+        {loading() && (
           <div class="text-gray-500 text-sm py-8 text-center">
             Loading demo data...
           </div>
         )}
 
-        {demoData() && (
+        {data() && (
           <div class="flex gap-4 items-start">
-            {/* Left: Timeline */}
             <div class="w-[800px] px-1 border border-gray-300 rounded bg-white flex-shrink-0">
-              <Timeline
-                initData={demoData()!}
-                pixelsPerSecond={pps()}
-                currentTime={currentTime()}
-                onSeek={(time) => setCurrentTime(time)}
-                onChange={(arg) => {
-                  console.log("onChange", arg);
-                  setDeletedRanges(arg.deletedRanges ?? []);
-                }}
-                showAsrTrack={showAsrTrack()}
-                showMediaTracks={showMediaTracks()}
-                selectionMenuItems={selectionMenuItems}
-              />
+              <Show
+                when={!mainTrackDeleted()}
+                fallback={
+                  <div class="py-12 text-center text-gray-400 text-sm">
+                    主轨素材已移除
+                  </div>
+                }
+              >
+                <Show when={showTimeline()}>
+                  <Timeline
+                    initData={data()!}
+                    pixelsPerSecond={pps()}
+                    currentTime={currentTime()}
+                    onSeek={(time) => setCurrentTime(time)}
+                    onChange={(arg) => {
+                      console.log("onChange", arg);
+                      setDeletedRanges(arg.deletedRanges ?? []);
+                    }}
+                    showAsrTrack={showAsrTrack()}
+                      showMediaTracks={showMediaTracks()}
+                      selectionMenuItems={selectionMenuItems}
+                    />
+                </Show>
+              </Show>
             </div>
 
-            {/* Right: Preview Player + Clips */}
             <div class="flex-1 min-w-0 sticky top-4 max-h-screen overflow-y-auto">
-              <PreviewPlayer
-                mainTrackConf={demoData()!.mainTrackConf}
-                currentTime={currentTime()}
-                isPlaying={isPlaying()}
-                deletedRanges={deletedRanges()}
-                onTimeUpdate={setCurrentTime}
-                onPlayPause={setIsPlaying}
-                onSeek={setCurrentTime}
-              />
+              <Show
+                when={!mainTrackDeleted()}
+                fallback={
+                  <div class="w-full rounded border border-gray-300 bg-gray-50 py-8 text-center text-gray-400 text-sm">
+                    主轨素材已移除
+                  </div>
+                }
+              >
+                <PreviewPlayer
+                  mainTrackConf={data()!.mainTrackConf}
+                  currentTime={currentTime()}
+                  isPlaying={isPlaying()}
+                  deletedRanges={deletedRanges()}
+                  onTimeUpdate={setCurrentTime}
+                  onPlayPause={setIsPlaying}
+                  onSeek={setCurrentTime}
+                />
+              </Show>
 
-              {/* Clips List */}
               <div class="mt-4 border border-gray-300 rounded bg-white p-3">
                 <div class="flex items-center justify-between mb-2">
                   <h3 class="text-sm font-semibold text-gray-800">摘录片段</h3>
@@ -333,19 +472,15 @@ const App: Component = () => {
                           onDrop={(e) => handleDrop(index(), e)}
                           onDragEnd={handleDragEnd}
                         >
-                          {/* Drag handle */}
                           <span class="text-gray-300 cursor-grab text-xs">
                             ⠿
                           </span>
-                          {/* Index */}
                           <span class="text-gray-400 text-xs w-4 text-center">
                             {index() + 1}
                           </span>
-                          {/* Time range */}
                           <span class="text-gray-700 text-xs flex-1">
                             {formatTime(clip.start)} - {formatTime(clip.end)}
                           </span>
-                          {/* Delete button */}
                           <button
                             class="text-gray-300 hover:text-red-500 text-xs"
                             onClick={(e) => {
@@ -374,6 +509,21 @@ const App: Component = () => {
           </p>
         </div>
       </section>
+
+      <Show when={showAssetsModal() && data()}>
+        <AssetManagerModal
+          data={data()!}
+          mainTrackDeleted={mainTrackDeleted()}
+          asrDeleted={asrDeleted()}
+          onReplaceMainTrack={handleReplaceMainTrack}
+          onDeleteMainTrack={handleDeleteMainTrack}
+          onDeleteAsr={handleDeleteAsr}
+          onImportAsr={handleImportAsr}
+          onDeleteItem={handleDeleteItem}
+          onImportItems={handleImportItems}
+          onClose={() => setShowAssetsModal(false)}
+        />
+      </Show>
     </div>
   );
 };

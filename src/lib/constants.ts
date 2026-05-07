@@ -3,6 +3,7 @@ export const ITEM_COLORS: Record<string, string> = {
   audio: "#FFCEE1",
   image: "#B7E5D2",
   text: "#C9F0FF",
+  asr: "#FFE0B2",
 };
 export const DELETED_RANGE_COLOR = "rgba(255, 100, 100, 0.3)";
 

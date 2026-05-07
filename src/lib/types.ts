@@ -14,6 +14,7 @@ export interface AsrSegment {
 export interface AsrData {
   segments: AsrSegment[];
   language: string;
+  filename?: string;
 }
 
 export interface IItem {
