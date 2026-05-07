@@ -1,4 +1,10 @@
-import { type Component, createSignal, createResource, For, Show } from "solid-js";
+import {
+  type Component,
+  createSignal,
+  createResource,
+  For,
+  Show,
+} from "solid-js";
 import { Timeline } from "../lib/index.ts";
 import { PreviewPlayer } from "../lib/PreviewPlayer.tsx";
 import { exportVideo, exportClips } from "../lib/video-exporter.ts";
@@ -40,13 +46,13 @@ async function loadDemoData(): Promise<IChangeEventData> {
       asrData,
     },
     items: [
-      {
-        id: "xxx",
-        type: "audio",
-        startTime: 0,
-        endTime: 10,
-        zIndex: 1,
-      },
+      // {
+      //   id: "xxx",
+      //   type: "audio",
+      //   startTime: 0,
+      //   endTime: 10,
+      //   zIndex: 1,
+      // },
     ],
     deletedRanges: [],
   };
@@ -291,7 +297,7 @@ const App: Component = () => {
               {/* Clips List */}
               <div class="mt-4 border border-gray-300 rounded bg-white p-3">
                 <div class="flex items-center justify-between mb-2">
-                  <h3 class="text-sm font-semibold text-gray-800">片段</h3>
+                  <h3 class="text-sm font-semibold text-gray-800">摘录片段</h3>
                   <Show when={clips().length > 0}>
                     <button
                       class="px-2 py-0.5 text-xs bg-black text-white rounded hover:bg-gray-800 disabled:opacity-50 disabled:cursor-not-allowed"
@@ -328,7 +334,9 @@ const App: Component = () => {
                           onDragEnd={handleDragEnd}
                         >
                           {/* Drag handle */}
-                          <span class="text-gray-300 cursor-grab text-xs">⠿</span>
+                          <span class="text-gray-300 cursor-grab text-xs">
+                            ⠿
+                          </span>
                           {/* Index */}
                           <span class="text-gray-400 text-xs w-4 text-center">
                             {index() + 1}
