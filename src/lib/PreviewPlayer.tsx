@@ -1,11 +1,12 @@
 import { type Component, createSignal, createEffect, on, onCleanup, Show } from "solid-js";
-import type { IMainTrackConf, DeletedRange } from "./types.ts";
+import type { IMainTrackConf, DeletedRange, Item, IAudioItem } from "./types.ts";
 
 export interface PreviewPlayerProps {
   mainTrackConf: IMainTrackConf;
   currentTime: number;
   isPlaying: boolean;
   deletedRanges?: DeletedRange[];
+  items?: Item[];
   onTimeUpdate: (time: number) => void;
   onPlayPause: (playing: boolean) => void;
   onSeek: (time: number) => void;
@@ -20,7 +21,22 @@ export const PreviewPlayer: Component<PreviewPlayerProps> = (props) => {
 
   const [objectUrl, setObjectUrl] = createSignal<string>("");
 
-  // Create object URL from file
+  const overlayAudioMap = new Map<string, { el: HTMLAudioElement; url: string }>();
+
+  const audioItems = () =>
+    (props.items ?? []).filter(
+      (it): it is IAudioItem => it.type === "audio" && "file" in it,
+    );
+
+  const skipIfDeleted = (time: number): number => {
+    const ranges = props.deletedRanges;
+    if (!ranges) return time;
+    for (const r of ranges) {
+      if (time >= r.start && time < r.end) return r.end;
+    }
+    return time;
+  };
+
   createEffect(
     on(
       () => props.mainTrackConf.item.file,
@@ -32,25 +48,65 @@ export const PreviewPlayer: Component<PreviewPlayerProps> = (props) => {
     ),
   );
 
+  createEffect(
+    on(audioItems, (items) => {
+      const currentIds = new Set(items.map((it) => it.id));
+      for (const [id, entry] of overlayAudioMap) {
+        if (!currentIds.has(id)) {
+          entry.el.pause();
+          URL.revokeObjectURL(entry.url);
+          overlayAudioMap.delete(id);
+        }
+      }
+      for (const item of items) {
+        if (!overlayAudioMap.has(item.id)) {
+          const url = URL.createObjectURL(item.file);
+          const el = new Audio(url);
+          overlayAudioMap.set(item.id, { el, url });
+        }
+      }
+    }),
+  );
+
   onCleanup(() => {
     const url = objectUrl();
     if (url) URL.revokeObjectURL(url);
     if (rafId !== undefined) cancelAnimationFrame(rafId);
+    for (const [, entry] of overlayAudioMap) {
+      entry.el.pause();
+      URL.revokeObjectURL(entry.url);
+    }
+    overlayAudioMap.clear();
   });
 
   const mediaEl = () => (isVideo() ? videoRef : audioRef);
 
-  const skipIfDeleted = (time: number): number => {
-    const ranges = props.deletedRanges;
-    if (!ranges) return time;
-    for (const r of ranges) {
-      if (time >= r.start && time < r.end) return r.end;
-    }
-    return time;
-  };
-
-  // Sync external currentTime to media element (only when not self-playing)
   let isSelfUpdate = false;
+
+  const syncOverlayAudio = (mainTime: number, playing: boolean) => {
+    for (const item of audioItems()) {
+      const entry = overlayAudioMap.get(item.id);
+      if (!entry) continue;
+
+      const inRange =
+        mainTime >= item.startTime && mainTime < item.endTime;
+
+      if (playing && inRange) {
+        const localTime = mainTime - item.startTime;
+        const skipped = skipIfDeleted(localTime + item.startTime) - item.startTime;
+        if (Math.abs(entry.el.currentTime - skipped) > 0.15) {
+          entry.el.currentTime = Math.max(0, skipped);
+        }
+        if (entry.el.paused) {
+          entry.el.play().catch(() => {});
+        }
+      } else {
+        if (!entry.el.paused) {
+          entry.el.pause();
+        }
+      }
+    }
+  };
 
   createEffect(
     on(
@@ -63,11 +119,11 @@ export const PreviewPlayer: Component<PreviewPlayerProps> = (props) => {
         if (Math.abs(el.currentTime - target) > 0.1) {
           el.currentTime = target;
         }
+        syncOverlayAudio(time, props.isPlaying);
       },
     ),
   );
 
-  // Sync play/pause state
   createEffect(
     on(
       () => props.isPlaying,
@@ -81,6 +137,7 @@ export const PreviewPlayer: Component<PreviewPlayerProps> = (props) => {
           el.pause();
           stopRAF();
         }
+        syncOverlayAudio(props.currentTime, playing);
       },
     ),
   );
@@ -97,6 +154,7 @@ export const PreviewPlayer: Component<PreviewPlayerProps> = (props) => {
         isSelfUpdate = true;
         props.onTimeUpdate(el.currentTime);
         isSelfUpdate = false;
+        syncOverlayAudio(el.currentTime, true);
         rafId = requestAnimationFrame(tick);
       }
     };
@@ -123,6 +181,9 @@ export const PreviewPlayer: Component<PreviewPlayerProps> = (props) => {
   const handleEnded = () => {
     stopRAF();
     props.onPlayPause(false);
+    for (const [, entry] of overlayAudioMap) {
+      if (!entry.el.paused) entry.el.pause();
+    }
   };
 
   const formatTime = (seconds: number): string => {

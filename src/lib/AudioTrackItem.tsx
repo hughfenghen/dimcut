@@ -2,6 +2,7 @@ import { type Component, createEffect, createSignal, on, onCleanup } from "solid
 import { ITEM_COLORS, ROW_ITEM_HEIGHT } from "./constants.ts";
 import { WaveformCanvas } from "./WaveformCanvas.tsx";
 import type { WaveformExtractor } from "./waveform-extractor.ts";
+import type { Item } from "./types.ts";
 
 export interface AudioTrackItemProps {
   extractor: WaveformExtractor;
@@ -11,6 +12,8 @@ export interface AudioTrackItemProps {
   pixelsPerSecond: number;
   left: number;
   width: number;
+  item?: Item;
+  onDragStart?: (e: MouseEvent, item: Item) => void;
 }
 
 export const AudioTrackItem: Component<AudioTrackItemProps> = (props) => {
@@ -20,16 +23,20 @@ export const AudioTrackItem: Component<AudioTrackItemProps> = (props) => {
   let hasDrawn = false;
   let lastDrawnPps = 0;
 
+  let lastDrawnFileStart = 0;
+  let lastDrawnFileEnd = 0;
+
   const loadWaveform = () => {
     const pps = props.pixelsPerSecond;
-    const data = props.extractor.extract(
-      props.visibleStart,
-      props.visibleEnd,
-      pps,
-    );
+    const itemStart = props.item?.startTime ?? 0;
+    const fileStart = props.visibleStart - itemStart;
+    const fileEnd = props.visibleEnd - itemStart;
+    const data = props.extractor.extract(fileStart, fileEnd, pps);
     setWaveformData(data);
     hasDrawn = true;
     lastDrawnPps = pps;
+    lastDrawnFileStart = fileStart;
+    lastDrawnFileEnd = fileEnd;
   };
 
   const throttledLoad = () => {
@@ -54,10 +61,14 @@ export const AudioTrackItem: Component<AudioTrackItemProps> = (props) => {
 
   createEffect(
     on(
-      [() => props.pixelsPerSecond, isVisible],
+      [() => props.pixelsPerSecond, () => props.visibleStart, () => props.visibleEnd, () => props.item?.startTime, isVisible],
       () => {
         if (!isVisible()) return;
-        if (!hasDrawn || props.pixelsPerSecond !== lastDrawnPps) {
+        const itemStart = props.item?.startTime ?? 0;
+        const fileStart = props.visibleStart - itemStart;
+        const fileEnd = props.visibleEnd - itemStart;
+        const fsChanged = fileStart !== lastDrawnFileStart || fileEnd !== lastDrawnFileEnd;
+        if (!hasDrawn || props.pixelsPerSecond !== lastDrawnPps || fsChanged) {
           throttledLoad();
         }
       },
@@ -71,6 +82,12 @@ export const AudioTrackItem: Component<AudioTrackItemProps> = (props) => {
   const canvasWidth = () =>
     Math.ceil((props.visibleEnd - props.visibleStart) * props.pixelsPerSecond);
 
+  const handleMouseDown = (e: MouseEvent) => {
+    if (props.item && props.onDragStart) {
+      props.onDragStart(e, props.item);
+    }
+  };
+
   return (
     <div
       ref={setupObserver}
@@ -80,7 +97,9 @@ export const AudioTrackItem: Component<AudioTrackItemProps> = (props) => {
         width: `${props.width}px`,
         height: `${ROW_ITEM_HEIGHT}px`,
         "background-color": ITEM_COLORS.audio,
+        cursor: props.onDragStart ? "grab" : "default",
       }}
+      onMouseDown={handleMouseDown}
     >
       <WaveformCanvas
         waveformData={waveformData()}

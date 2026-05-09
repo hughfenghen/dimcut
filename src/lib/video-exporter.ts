@@ -10,7 +10,7 @@ import {
   BlobSource,
   ALL_FORMATS,
 } from "mediabunny";
-import type { DeletedRange, Clip } from "./types.ts";
+import type { DeletedRange, Clip, IAudioItem } from "./types.ts";
 
 interface Segment {
   start: number;
@@ -125,6 +125,7 @@ export async function exportVideo(
   file: File,
   deletedRanges: DeletedRange[],
   duration: number,
+  audioItems?: IAudioItem[],
 ): Promise<void> {
   const segments = computeValidSegments(duration, deletedRanges);
   if (segments.length === 0) return;
@@ -145,7 +146,7 @@ export async function exportVideo(
     }
   }
 
-  // Process audio samples
+  // Process main track audio samples
   if (pipeline.audioTrack) {
     const audioSink = new AudioSampleSink(pipeline.audioTrack);
     for (const segment of segments) {
@@ -157,6 +158,39 @@ export async function exportVideo(
         sample.setTimestamp(sample.timestamp - offset);
         await pipeline.audioSource.add(sample);
         sample.close();
+      }
+    }
+  }
+
+  // Process overlay audio items
+  if (audioItems && audioItems.length > 0) {
+    for (const audioItem of audioItems) {
+      const itemDuration = audioItem.endTime - audioItem.startTime;
+      const itemInput = new Input({
+        formats: ALL_FORMATS,
+        source: new BlobSource(audioItem.file),
+      });
+      const itemAudioTrack = await itemInput.getPrimaryAudioTrack();
+      if (!itemAudioTrack) continue;
+
+      const itemAudioSink = new AudioSampleSink(itemAudioTrack);
+
+      for (const segment of segments) {
+        const overlapStart = Math.max(segment.start, audioItem.startTime);
+        const overlapEnd = Math.min(segment.end, audioItem.endTime);
+        if (overlapStart >= overlapEnd) continue;
+
+        const fileStart = overlapStart - audioItem.startTime;
+        const fileEnd = overlapEnd - audioItem.startTime;
+
+        for await (const sample of itemAudioSink.samples(fileStart, fileEnd)) {
+          const absTime = sample.timestamp + audioItem.startTime;
+          const clampedAbs = Math.max(overlapStart, Math.min(absTime, overlapEnd));
+          const offset = computeTimeOffset(clampedAbs, sortedRanges);
+          sample.setTimestamp(Math.max(0, clampedAbs - offset));
+          await pipeline.audioSource.add(sample);
+          sample.close();
+        }
       }
     }
   }

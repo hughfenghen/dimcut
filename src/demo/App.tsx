@@ -173,7 +173,6 @@ const App: Component = () => {
     const d = data();
     if (!d) return;
     setData({ ...d, items: d.items.filter((it) => it.id !== id) });
-    bumpVersion();
   };
 
   const handleImportItems = async (files: File[]) => {
@@ -199,7 +198,6 @@ const App: Component = () => {
       } as Item);
     }
     setData({ ...d, items: [...d.items, ...newItems] });
-    bumpVersion();
   };
 
   const handleExport = async () => {
@@ -208,10 +206,15 @@ const App: Component = () => {
     setExporting(true);
     try {
       const item = d.mainTrackConf.item;
+      const overlayAudioItems = d.items.filter(
+        (it): it is typeof it & { type: "audio"; file: File } =>
+          it.type === "audio" && "file" in it,
+      );
       await exportVideo(
         item.file,
         deletedRanges(),
         item.endTime - item.startTime,
+        overlayAudioItems,
       );
     } finally {
       setExporting(false);
@@ -405,6 +408,9 @@ const App: Component = () => {
                     onChange={(arg) => {
                       console.log("onChange", arg);
                       setDeletedRanges(arg.deletedRanges ?? []);
+                      if (arg.items) {
+                        setData((d) => (d ? { ...d, items: arg.items! } : d));
+                      }
                     }}
                     showAsrTrack={showAsrTrack()}
                       showMediaTracks={showMediaTracks()}
@@ -428,6 +434,7 @@ const App: Component = () => {
                   currentTime={currentTime()}
                   isPlaying={isPlaying()}
                   deletedRanges={deletedRanges()}
+                  items={data()!.items}
                   onTimeUpdate={setCurrentTime}
                   onPlayPause={setIsPlaying}
                   onSeek={setCurrentTime}

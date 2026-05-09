@@ -35,6 +35,27 @@ export const Timeline: Component<TimelineProps> = (props) => {
     props.initData.deletedRanges ?? [],
   );
 
+  createEffect(
+    on(
+      () => props.initData.items,
+      (externalItems) => {
+        const current = items();
+        const currentById = new Map(current.map((it) => [it.id, it]));
+        const externalIds = new Set(externalItems.map((it) => it.id));
+
+        const removed = current.filter((it) => !externalIds.has(it.id));
+        const added = externalItems.filter((it) => !currentById.has(it.id));
+
+        if (removed.length === 0 && added.length === 0) return;
+
+        const next = current
+          .filter((it) => externalIds.has(it.id))
+          .concat(added);
+        setItems(next);
+      },
+    ),
+  );
+
   const emitChange = (
     nextItems = items(),
     nextDeletedRanges = deletedRanges(),
@@ -130,6 +151,52 @@ export const Timeline: Component<TimelineProps> = (props) => {
 
   onCleanup(() => {
     waveformExt()?.dispose();
+  });
+
+  // --- Overlay audio waveform extractors ---
+  const [itemWaveformExtractors, setItemWaveformExtractors] = createSignal<
+    Map<string, WaveformExtractor>
+  >(new Map());
+
+  createEffect(
+    on(items, (currentItems) => {
+      const prev = itemWaveformExtractors();
+      const next = new Map<string, WaveformExtractor>();
+
+      for (const item of currentItems) {
+        if (item.type === "audio" && "file" in item) {
+          const existing = prev.get(item.id);
+          if (existing) {
+            next.set(item.id, existing);
+          } else {
+            const ext = new WaveformExtractor((item as any).file);
+            ext.init().then(() => {
+              setItemWaveformExtractors((m) => {
+                if (!m.has(item.id)) return m;
+                const updated = new Map(m);
+                updated.set(item.id, ext);
+                return updated;
+              });
+            });
+            next.set(item.id, ext);
+          }
+        }
+      }
+
+      for (const [id, ext] of prev) {
+        if (!next.has(id)) {
+          ext.dispose();
+        }
+      }
+
+      setItemWaveformExtractors(next);
+    }),
+  );
+
+  onCleanup(() => {
+    for (const [, ext] of itemWaveformExtractors()) {
+      ext.dispose();
+    }
   });
 
   // --- Drag state (id-based) ---
@@ -474,6 +541,7 @@ export const Timeline: Component<TimelineProps> = (props) => {
                 selectionRange={selectionRange() ?? undefined}
                 thumbnailExtractor={extractor()}
                 waveformExtractor={waveformExt()}
+                itemWaveformExtractors={itemWaveformExtractors()}
                 currentTime={props.currentTime}
                 onSeek={props.onSeek}
                 showAsrTrack={props.showAsrTrack}

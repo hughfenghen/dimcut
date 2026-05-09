@@ -35,6 +35,7 @@ export interface TimelineRowProps {
   selectionRange?: { start: number; end: number };
   thumbnailExtractor?: ThumbnailExtractor;
   waveformExtractor?: WaveformExtractor;
+  itemWaveformExtractors?: Map<string, WaveformExtractor>;
   currentTime?: number;
   onSeek?: (time: number) => void;
   showAsrTrack?: boolean;
@@ -262,19 +263,43 @@ export const TimelineRow: Component<TimelineRowProps> = (props) => {
                     style={{ top: `${top()}px` }}
                     data-track-item
                   >
-                    <TrackItem
-                      item={slice.item}
-                      left={timeToPixel(
-                        slice.visibleStart,
-                        props.row.startTime,
-                        props.pixelsPerSecond,
-                      )}
-                      width={
-                        (slice.visibleEnd - slice.visibleStart) *
-                        props.pixelsPerSecond
-                      }
-                      onDragStart={props.onItemDragStart}
-                    />
+                    {slice.item.type === "audio" &&
+                    props.itemWaveformExtractors?.get(slice.item.id) ? (
+                      <AudioTrackItem
+                        extractor={props.itemWaveformExtractors.get(
+                          slice.item.id,
+                        )!}
+                        visibleStart={slice.visibleStart}
+                        visibleEnd={slice.visibleEnd}
+                        rowStartTime={props.row.startTime}
+                        pixelsPerSecond={props.pixelsPerSecond}
+                        left={timeToPixel(
+                          slice.visibleStart,
+                          props.row.startTime,
+                          props.pixelsPerSecond,
+                        )}
+                        width={
+                          (slice.visibleEnd - slice.visibleStart) *
+                          props.pixelsPerSecond
+                        }
+                        item={slice.item}
+                        onDragStart={props.onItemDragStart}
+                      />
+                    ) : (
+                      <TrackItem
+                        item={slice.item}
+                        left={timeToPixel(
+                          slice.visibleStart,
+                          props.row.startTime,
+                          props.pixelsPerSecond,
+                        )}
+                        width={
+                          (slice.visibleEnd - slice.visibleStart) *
+                          props.pixelsPerSecond
+                        }
+                        onDragStart={props.onItemDragStart}
+                      />
+                    )}
                   </div>
                 );
               }}
