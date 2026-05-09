@@ -1,0 +1,1165 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>DimCut — 折叠时间，裁剪光影</title>
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600&family=Noto+Serif+SC:wght@400;600;700&display=swap');
+
+    *, *::before, *::after { margin: 0; padding: 0; box-sizing: border-box; }
+
+    :root {
+      --bg: #0a0a0c;
+      --bg-card: #111114;
+      --bg-subtle: #16161a;
+      --border: #1e1e24;
+      --text: #e8e6e3;
+      --text-dim: #8a8a8e;
+      --accent: #c5a46c;
+      --accent-dim: #9a7d4e;
+      --red: #c0392b;
+      --red-dim: rgba(192, 57, 43, 0.15);
+      --blue: #5b8cb8;
+      --green: #6b9e78;
+    }
+
+    html {
+      scroll-behavior: smooth;
+      background: var(--bg);
+      color: var(--text);
+      font-family: 'Inter', -apple-system, sans-serif;
+      line-height: 1.7;
+      overflow-x: hidden;
+    }
+
+    /* ─── Grain overlay ─── */
+    body::before {
+      content: '';
+      position: fixed;
+      inset: 0;
+      z-index: 9999;
+      pointer-events: none;
+      opacity: 0.03;
+      background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noise)'/%3E%3C/svg%3E");
+    }
+
+    /* ─── Utilities ─── */
+    .container {
+      max-width: 1100px;
+      margin: 0 auto;
+      padding: 0 2rem;
+    }
+
+    /* ─── Navigation ─── */
+    nav {
+      position: fixed;
+      top: 0;
+      left: 0;
+      right: 0;
+      z-index: 100;
+      padding: 1.5rem 2rem;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      backdrop-filter: blur(20px);
+      background: rgba(10, 10, 12, 0.7);
+      border-bottom: 1px solid var(--border);
+    }
+
+    .logo {
+      font-family: 'Noto Serif SC', serif;
+      font-weight: 700;
+      font-size: 1.3rem;
+      letter-spacing: 0.08em;
+      color: var(--text);
+    }
+
+    .logo span {
+      color: var(--accent);
+    }
+
+    nav a {
+      color: var(--text-dim);
+      text-decoration: none;
+      font-size: 0.85rem;
+      letter-spacing: 0.05em;
+      transition: color 0.3s;
+    }
+
+    nav a:hover { color: var(--text); }
+
+    .nav-links { display: flex; gap: 2rem; align-items: center; }
+
+    .nav-btn {
+      padding: 0.45rem 1.2rem;
+      border: 1px solid var(--accent-dim);
+      border-radius: 2px;
+      color: var(--accent) !important;
+      font-size: 0.8rem;
+      transition: all 0.3s;
+    }
+
+    .nav-btn:hover {
+      background: var(--accent);
+      color: var(--bg) !important;
+    }
+
+    /* ─── Hero ─── */
+    .hero {
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      align-items: center;
+      text-align: center;
+      padding: 8rem 2rem 4rem;
+      position: relative;
+    }
+
+    .hero::before {
+      content: '';
+      position: absolute;
+      top: 20%;
+      left: 50%;
+      transform: translateX(-50%);
+      width: 600px;
+      height: 600px;
+      background: radial-gradient(circle, rgba(197, 164, 108, 0.06) 0%, transparent 70%);
+      pointer-events: none;
+    }
+
+    .hero-tag {
+      font-size: 0.75rem;
+      letter-spacing: 0.25em;
+      text-transform: uppercase;
+      color: var(--accent-dim);
+      margin-bottom: 2rem;
+    }
+
+    .hero h1 {
+      font-family: 'Noto Serif SC', serif;
+      font-weight: 700;
+      font-size: clamp(2.8rem, 6vw, 4.5rem);
+      line-height: 1.2;
+      margin-bottom: 1.5rem;
+      letter-spacing: -0.02em;
+    }
+
+    .hero h1 em {
+      font-style: normal;
+      color: var(--accent);
+    }
+
+    .hero p {
+      font-size: 1.1rem;
+      color: var(--text-dim);
+      max-width: 520px;
+      line-height: 1.9;
+      margin-bottom: 3rem;
+    }
+
+    .hero-cta {
+      display: flex;
+      gap: 1rem;
+      align-items: center;
+    }
+
+    .btn-primary {
+      display: inline-block;
+      padding: 0.85rem 2.4rem;
+      background: var(--accent);
+      color: var(--bg);
+      text-decoration: none;
+      font-size: 0.85rem;
+      font-weight: 500;
+      letter-spacing: 0.06em;
+      border-radius: 2px;
+      transition: all 0.3s;
+    }
+
+    .btn-primary:hover {
+      background: #d4b37a;
+      transform: translateY(-1px);
+    }
+
+    .btn-ghost {
+      display: inline-block;
+      padding: 0.85rem 2.4rem;
+      color: var(--text-dim);
+      text-decoration: none;
+      font-size: 0.85rem;
+      letter-spacing: 0.06em;
+      border: 1px solid var(--border);
+      border-radius: 2px;
+      transition: all 0.3s;
+    }
+
+    .btn-ghost:hover {
+      border-color: var(--text-dim);
+      color: var(--text);
+    }
+
+    /* ─── Timeline Illustration ─── */
+    .timeline-visual {
+      margin-top: 5rem;
+      width: 100%;
+      max-width: 900px;
+      position: relative;
+    }
+
+    .tl-window {
+      background: var(--bg-card);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      overflow: hidden;
+      box-shadow: 0 40px 80px rgba(0,0,0,0.5);
+    }
+
+    .tl-titlebar {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      padding: 12px 16px;
+      background: var(--bg-subtle);
+      border-bottom: 1px solid var(--border);
+    }
+
+    .tl-dot { width: 10px; height: 10px; border-radius: 50%; }
+    .tl-dot:nth-child(1) { background: #e74c3c; }
+    .tl-dot:nth-child(2) { background: #f39c12; }
+    .tl-dot:nth-child(3) { background: #27ae60; }
+
+    .tl-body { padding: 1.5rem; }
+
+    /* Ruler */
+    .tl-ruler {
+      display: flex;
+      justify-content: space-between;
+      font-size: 0.65rem;
+      color: var(--text-dim);
+      letter-spacing: 0.1em;
+      padding-bottom: 0.5rem;
+      border-bottom: 1px solid var(--border);
+      font-variant-numeric: tabular-nums;
+    }
+
+    /* Row */
+    .tl-row {
+      display: flex;
+      gap: 3px;
+      align-items: stretch;
+      margin-top: 8px;
+      min-height: 38px;
+    }
+
+    .tl-row-label {
+      width: 28px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 0.6rem;
+      color: var(--text-dim);
+      opacity: 0.5;
+    }
+
+    .tl-track {
+      flex: 1;
+      display: flex;
+      gap: 2px;
+      position: relative;
+    }
+
+    .tl-clip {
+      border-radius: 4px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 0.65rem;
+      color: rgba(255,255,255,0.7);
+      letter-spacing: 0.04em;
+      position: relative;
+      overflow: hidden;
+    }
+
+    .tl-clip-video {
+      background: linear-gradient(135deg, #2a3a52 0%, #1e2d42 100%);
+      border: 1px solid rgba(91, 140, 184, 0.25);
+    }
+
+    .tl-clip-audio {
+      background: linear-gradient(135deg, #2a3d2e 0%, #1e3224 100%);
+      border: 1px solid rgba(107, 158, 120, 0.25);
+    }
+
+    .tl-clip-text {
+      background: linear-gradient(135deg, #3d2a3d 0%, #321e32 100%);
+      border: 1px solid rgba(158, 107, 158, 0.25);
+    }
+
+    /* Waveform bars inside clips */
+    .tl-wave {
+      position: absolute;
+      bottom: 4px;
+      left: 4px;
+      right: 4px;
+      height: 14px;
+      display: flex;
+      align-items: flex-end;
+      gap: 1.5px;
+    }
+
+    .tl-wave-bar {
+      flex: 1;
+      background: rgba(255,255,255,0.12);
+      border-radius: 1px;
+      min-width: 2px;
+    }
+
+    /* Deleted range */
+    .tl-deleted {
+      position: absolute;
+      top: 0;
+      bottom: 0;
+      background: var(--red-dim);
+      border-left: 1.5px solid var(--red);
+      border-right: 1.5px solid var(--red);
+      border-radius: 2px;
+    }
+
+    /* Playhead */
+    .tl-playhead {
+      position: absolute;
+      top: -4px;
+      bottom: -4px;
+      width: 2px;
+      background: var(--red);
+      z-index: 10;
+    }
+
+    .tl-playhead::before {
+      content: '';
+      position: absolute;
+      top: -3px;
+      left: -4px;
+      width: 10px;
+      height: 10px;
+      background: var(--red);
+      border-radius: 50%;
+    }
+
+    /* ASR text row */
+    .tl-asr {
+      margin-top: 6px;
+      padding: 8px 10px;
+      background: var(--bg-subtle);
+      border-radius: 4px;
+      border: 1px solid var(--border);
+    }
+
+    .tl-asr-text {
+      font-size: 0.7rem;
+      color: var(--text-dim);
+      line-height: 1.8;
+      letter-spacing: 0.02em;
+    }
+
+    .tl-asr-text .highlight {
+      color: var(--text);
+      background: rgba(197, 164, 108, 0.12);
+      padding: 1px 3px;
+      border-radius: 2px;
+    }
+
+    .tl-asr-text .deleted {
+      color: var(--red);
+      text-decoration: line-through;
+      opacity: 0.6;
+    }
+
+    /* Fold indicator */
+    .tl-fold {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      margin: 6px 0;
+      font-size: 0.6rem;
+      color: var(--text-dim);
+      opacity: 0.4;
+    }
+
+    .tl-fold::before, .tl-fold::after {
+      content: '';
+      flex: 1;
+      height: 1px;
+      background: var(--border);
+    }
+
+    /* ─── Scroll indicator ─── */
+    .scroll-hint {
+      margin-top: 4rem;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 0.5rem;
+      color: var(--text-dim);
+      font-size: 0.7rem;
+      letter-spacing: 0.15em;
+      animation: float 3s ease-in-out infinite;
+    }
+
+    .scroll-hint svg { width: 16px; height: 16px; opacity: 0.4; }
+
+    @keyframes float {
+      0%, 100% { transform: translateY(0); }
+      50% { transform: translateY(6px); }
+    }
+
+    /* ─── Section layout ─── */
+    section {
+      padding: 8rem 0;
+    }
+
+    .section-label {
+      font-size: 0.7rem;
+      letter-spacing: 0.3em;
+      text-transform: uppercase;
+      color: var(--accent-dim);
+      margin-bottom: 1rem;
+    }
+
+    .section-title {
+      font-family: 'Noto Serif SC', serif;
+      font-weight: 600;
+      font-size: clamp(1.8rem, 3.5vw, 2.5rem);
+      line-height: 1.3;
+      margin-bottom: 1rem;
+    }
+
+    .section-desc {
+      color: var(--text-dim);
+      max-width: 560px;
+      font-size: 0.95rem;
+      line-height: 1.8;
+    }
+
+    /* ─── Features ─── */
+    .features-section {
+      background: linear-gradient(180deg, var(--bg) 0%, var(--bg-subtle) 50%, var(--bg) 100%);
+    }
+
+    .features-grid {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 1px;
+      margin-top: 4rem;
+      background: var(--border);
+      border: 1px solid var(--border);
+    }
+
+    .feature-card {
+      background: var(--bg);
+      padding: 2.5rem 2rem;
+      transition: background 0.3s;
+    }
+
+    .feature-card:hover {
+      background: var(--bg-card);
+    }
+
+    .feature-icon {
+      width: 36px;
+      height: 36px;
+      margin-bottom: 1.5rem;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .feature-icon svg {
+      width: 100%;
+      height: 100%;
+    }
+
+    .feature-card h3 {
+      font-family: 'Noto Serif SC', serif;
+      font-size: 1.05rem;
+      font-weight: 600;
+      margin-bottom: 0.75rem;
+      letter-spacing: 0.02em;
+    }
+
+    .feature-card p {
+      font-size: 0.85rem;
+      color: var(--text-dim);
+      line-height: 1.7;
+    }
+
+    /* ─── Highlight sections (alternating) ─── */
+    .highlight-section {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 4rem;
+      align-items: center;
+      padding: 6rem 0;
+    }
+
+    .highlight-section.reverse { direction: rtl; }
+    .highlight-section.reverse > * { direction: ltr; }
+
+    .highlight-visual {
+      position: relative;
+    }
+
+    .highlight-visual .diagram {
+      background: var(--bg-card);
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      padding: 2rem;
+      font-family: 'SF Mono', 'Fira Code', monospace;
+      font-size: 0.75rem;
+      color: var(--text-dim);
+      line-height: 2;
+      position: relative;
+      overflow: hidden;
+    }
+
+    .highlight-visual .diagram::after {
+      content: '';
+      position: absolute;
+      bottom: 0;
+      left: 0;
+      right: 0;
+      height: 40px;
+      background: linear-gradient(transparent, var(--bg-card));
+    }
+
+    .highlight-visual .diagram .kw { color: var(--blue); }
+    .highlight-visual .diagram .str { color: var(--green); }
+    .highlight-visual .diagram .fn { color: var(--accent); }
+    .highlight-visual .diagram .cm { color: #555; }
+
+    /* Folding animation */
+    .fold-demo {
+      background: var(--bg-card);
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      padding: 1.5rem;
+      overflow: hidden;
+    }
+
+    .fold-demo .fold-row {
+      display: flex;
+      gap: 3px;
+      margin-bottom: 6px;
+      padding: 6px 8px;
+      border-radius: 4px;
+      background: var(--bg-subtle);
+      align-items: center;
+      min-height: 36px;
+    }
+
+    .fold-demo .fold-row .row-num {
+      font-size: 0.6rem;
+      color: var(--text-dim);
+      opacity: 0.4;
+      width: 16px;
+      text-align: center;
+      flex-shrink: 0;
+    }
+
+    .fold-demo .fold-row .row-content {
+      flex: 1;
+      display: flex;
+      gap: 2px;
+    }
+
+    .fold-mini-clip {
+      height: 24px;
+      border-radius: 3px;
+      background: linear-gradient(135deg, #2a3a52, #1e2d42);
+      border: 1px solid rgba(91, 140, 184, 0.2);
+    }
+
+    .fold-mini-asr {
+      margin-top: -2px;
+      padding: 4px 8px;
+      font-size: 0.6rem;
+      color: var(--text-dim);
+      line-height: 1.6;
+      border-left: 2px solid var(--border);
+      margin-left: 20px;
+    }
+
+    .fold-arrow {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 0.8rem;
+      color: var(--accent-dim);
+      font-size: 0.7rem;
+      letter-spacing: 0.2em;
+    }
+
+    /* ─── Tech stack ─── */
+    .tech-row {
+      display: flex;
+      gap: 3rem;
+      margin-top: 3rem;
+      flex-wrap: wrap;
+    }
+
+    .tech-item {
+      display: flex;
+      align-items: center;
+      gap: 0.75rem;
+    }
+
+    .tech-badge {
+      width: 40px;
+      height: 40px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      background: var(--bg-card);
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      font-size: 0.7rem;
+      font-weight: 600;
+      color: var(--text-dim);
+    }
+
+    .tech-item span {
+      font-size: 0.85rem;
+      color: var(--text-dim);
+    }
+
+    /* ─── CTA section ─── */
+    .cta-section {
+      text-align: center;
+      padding: 8rem 0 10rem;
+      position: relative;
+    }
+
+    .cta-section::before {
+      content: '';
+      position: absolute;
+      bottom: 0;
+      left: 50%;
+      transform: translateX(-50%);
+      width: 500px;
+      height: 500px;
+      background: radial-gradient(circle, rgba(197, 164, 108, 0.04) 0%, transparent 70%);
+      pointer-events: none;
+    }
+
+    .cta-section .section-title {
+      margin-bottom: 1.5rem;
+    }
+
+    .cta-section .section-desc {
+      margin: 0 auto 3rem;
+    }
+
+    .install-cmd {
+      display: inline-flex;
+      align-items: center;
+      gap: 1rem;
+      background: var(--bg-card);
+      border: 1px solid var(--border);
+      padding: 1rem 1.8rem;
+      border-radius: 4px;
+      font-family: 'SF Mono', 'Fira Code', monospace;
+      font-size: 0.85rem;
+      color: var(--accent);
+      margin-top: 1.5rem;
+    }
+
+    .install-cmd .prefix { color: var(--text-dim); }
+
+    /* ─── Footer ─── */
+    footer {
+      border-top: 1px solid var(--border);
+      padding: 3rem 2rem;
+      text-align: center;
+    }
+
+    footer p {
+      font-size: 0.75rem;
+      color: var(--text-dim);
+      letter-spacing: 0.05em;
+    }
+
+    /* ─── Responsive ─── */
+    @media (max-width: 768px) {
+      .features-grid { grid-template-columns: 1fr; }
+      .highlight-section { grid-template-columns: 1fr; gap: 2rem; }
+      .highlight-section.reverse { direction: ltr; }
+      .nav-links a:not(.nav-btn) { display: none; }
+      .tech-row { gap: 1.5rem; }
+    }
+
+    /* ─── Animations ─── */
+    @keyframes fadeUp {
+      from { opacity: 0; transform: translateY(30px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+
+    .animate {
+      animation: fadeUp 0.8s ease-out forwards;
+      opacity: 0;
+    }
+
+    .animate-d1 { animation-delay: 0.1s; }
+    .animate-d2 { animation-delay: 0.2s; }
+    .animate-d3 { animation-delay: 0.3s; }
+    .animate-d4 { animation-delay: 0.5s; }
+  </style>
+</head>
+<body>
+
+  <!-- Navigation -->
+  <nav>
+    <div class="logo">Dim<span>Cut</span></div>
+    <div class="nav-links">
+      <a href="#features">特性</a>
+      <a href="#folding">折叠时间轴</a>
+      <a href="#asr">文字轨</a>
+      <a href="#start" class="nav-btn">快速开始</a>
+    </div>
+  </nav>
+
+  <!-- Hero -->
+  <section class="hero">
+    <div class="hero-tag animate">SolidJS Video Timeline Editor</div>
+    <h1 class="animate animate-d1">折叠时间，<br><em>裁剪光影</em></h1>
+    <p class="animate animate-d2">
+      一个为现代 Web 打造的视频时间轴编辑器组件库。
+      多行折叠布局、ASR 文字轨深度整合、区间删除与流式导出——
+      以极简的 API 交付专业级剪辑体验。
+    </p>
+    <div class="hero-cta animate animate-d3">
+      <a href="#start" class="btn-primary">开始使用</a>
+      <a href="#features" class="btn-ghost">了解更多</a>
+    </div>
+
+    <!-- Timeline illustration -->
+    <div class="timeline-visual animate animate-d4">
+      <div class="tl-window">
+        <div class="tl-titlebar">
+          <div class="tl-dot"></div>
+          <div class="tl-dot"></div>
+          <div class="tl-dot"></div>
+        </div>
+        <div class="tl-body">
+          <!-- Ruler -->
+          <div class="tl-ruler">
+            <span>00:00</span><span>00:15</span><span>00:30</span><span>00:45</span><span>01:00</span><span>01:15</span><span>01:30</span>
+          </div>
+
+          <!-- Row 1 -->
+          <div class="tl-row" style="position:relative;">
+            <div class="tl-row-label">1</div>
+            <div class="tl-track">
+              <div class="tl-clip tl-clip-video" style="flex:5;">
+                <div class="tl-wave">
+                  <div class="tl-wave-bar" style="height:40%"></div>
+                  <div class="tl-wave-bar" style="height:70%"></div>
+                  <div class="tl-wave-bar" style="height:55%"></div>
+                  <div class="tl-wave-bar" style="height:90%"></div>
+                  <div class="tl-wave-bar" style="height:65%"></div>
+                  <div class="tl-wave-bar" style="height:80%"></div>
+                  <div class="tl-wave-bar" style="height:45%"></div>
+                  <div class="tl-wave-bar" style="height:75%"></div>
+                  <div class="tl-wave-bar" style="height:50%"></div>
+                  <div class="tl-wave-bar" style="height:85%"></div>
+                  <div class="tl-wave-bar" style="height:60%"></div>
+                  <div class="tl-wave-bar" style="height:95%"></div>
+                  <div class="tl-wave-bar" style="height:70%"></div>
+                  <div class="tl-wave-bar" style="height:40%"></div>
+                  <div class="tl-wave-bar" style="height:80%"></div>
+                  <div class="tl-wave-bar" style="height:55%"></div>
+                  <div class="tl-wave-bar" style="height:65%"></div>
+                  <div class="tl-wave-bar" style="height:90%"></div>
+                  <div class="tl-wave-bar" style="height:50%"></div>
+                  <div class="tl-wave-bar" style="height:75%"></div>
+                </div>
+              </div>
+              <div class="tl-clip tl-clip-audio" style="flex:3;">
+                <div class="tl-wave">
+                  <div class="tl-wave-bar" style="height:60%"></div>
+                  <div class="tl-wave-bar" style="height:35%"></div>
+                  <div class="tl-wave-bar" style="height:80%"></div>
+                  <div class="tl-wave-bar" style="height:50%"></div>
+                  <div class="tl-wave-bar" style="height:70%"></div>
+                  <div class="tl-wave-bar" style="height:45%"></div>
+                  <div class="tl-wave-bar" style="height:85%"></div>
+                  <div class="tl-wave-bar" style="height:55%"></div>
+                  <div class="tl-wave-bar" style="height:65%"></div>
+                  <div class="tl-wave-bar" style="height:90%"></div>
+                  <div class="tl-wave-bar" style="height:40%"></div>
+                  <div class="tl-wave-bar" style="height:75%"></div>
+                </div>
+              </div>
+              <div class="tl-clip tl-clip-video" style="flex:4;">
+                <div class="tl-wave">
+                  <div class="tl-wave-bar" style="height:50%"></div>
+                  <div class="tl-wave-bar" style="height:80%"></div>
+                  <div class="tl-wave-bar" style="height:35%"></div>
+                  <div class="tl-wave-bar" style="height:70%"></div>
+                  <div class="tl-wave-bar" style="height:95%"></div>
+                  <div class="tl-wave-bar" style="height:60%"></div>
+                  <div class="tl-wave-bar" style="height:45%"></div>
+                  <div class="tl-wave-bar" style="height:85%"></div>
+                  <div class="tl-wave-bar" style="height:55%"></div>
+                  <div class="tl-wave-bar" style="height:75%"></div>
+                  <div class="tl-wave-bar" style="height:40%"></div>
+                  <div class="tl-wave-bar" style="height:90%"></div>
+                  <div class="tl-wave-bar" style="height:65%"></div>
+                  <div class="tl-wave-bar" style="height:50%"></div>
+                  <div class="tl-wave-bar" style="height:80%"></div>
+                  <div class="tl-wave-bar" style="height:70%"></div>
+                </div>
+              </div>
+              <!-- Deleted range -->
+              <div class="tl-deleted" style="left:62%;width:8%;"></div>
+              <!-- Playhead -->
+              <div class="tl-playhead" style="left:35%;"></div>
+            </div>
+          </div>
+
+          <!-- ASR row -->
+          <div class="tl-asr">
+            <div class="tl-asr-text">
+              在这个项目中 我们需要重新审视 <span class="highlight">时间轴的交互方式</span> 传统的线性布局在处理长视频时 <span class="deleted">会产生大量的</span> 存在明显的空间浪费 因此我们采用了 折叠式多行布局
+            </div>
+          </div>
+
+          <!-- Fold line -->
+          <div class="tl-fold">↓ FOLD</div>
+
+          <!-- Row 2 -->
+          <div class="tl-row">
+            <div class="tl-row-label">2</div>
+            <div class="tl-track">
+              <div class="tl-clip tl-clip-video" style="flex:6;">
+                <div class="tl-wave">
+                  <div class="tl-wave-bar" style="height:70%"></div>
+                  <div class="tl-wave-bar" style="height:45%"></div>
+                  <div class="tl-wave-bar" style="height:85%"></div>
+                  <div class="tl-wave-bar" style="height:60%"></div>
+                  <div class="tl-wave-bar" style="height:75%"></div>
+                  <div class="tl-wave-bar" style="height:50%"></div>
+                  <div class="tl-wave-bar" style="height:90%"></div>
+                  <div class="tl-wave-bar" style="height:65%"></div>
+                  <div class="tl-wave-bar" style="height:80%"></div>
+                  <div class="tl-wave-bar" style="height:40%"></div>
+                  <div class="tl-wave-bar" style="height:70%"></div>
+                  <div class="tl-wave-bar" style="height:55%"></div>
+                  <div class="tl-wave-bar" style="height:85%"></div>
+                  <div class="tl-wave-bar" style="height:45%"></div>
+                  <div class="tl-wave-bar" style="height:75%"></div>
+                  <div class="tl-wave-bar" style="height:60%"></div>
+                  <div class="tl-wave-bar" style="height:90%"></div>
+                  <div class="tl-wave-bar" style="height:50%"></div>
+                  <div class="tl-wave-bar" style="height:65%"></div>
+                  <div class="tl-wave-bar" style="height:80%"></div>
+                  <div class="tl-wave-bar" style="height:70%"></div>
+                  <div class="tl-wave-bar" style="height:55%"></div>
+                  <div class="tl-wave-bar" style="height:40%"></div>
+                  <div class="tl-wave-bar" style="height:85%"></div>
+                </div>
+              </div>
+              <div class="tl-clip tl-clip-text" style="flex:2;">字幕</div>
+              <div class="tl-clip tl-clip-video" style="flex:4;">
+                <div class="tl-wave">
+                  <div class="tl-wave-bar" style="height:55%"></div>
+                  <div class="tl-wave-bar" style="height:80%"></div>
+                  <div class="tl-wave-bar" style="height:40%"></div>
+                  <div class="tl-wave-bar" style="height:70%"></div>
+                  <div class="tl-wave-bar" style="height:60%"></div>
+                  <div class="tl-wave-bar" style="height:90%"></div>
+                  <div class="tl-wave-bar" style="height:50%"></div>
+                  <div class="tl-wave-bar" style="height:75%"></div>
+                  <div class="tl-wave-bar" style="height:65%"></div>
+                  <div class="tl-wave-bar" style="height:85%"></div>
+                  <div class="tl-wave-bar" style="height:45%"></div>
+                  <div class="tl-wave-bar" style="height:70%"></div>
+                  <div class="tl-wave-bar" style="height:55%"></div>
+                  <div class="tl-wave-bar" style="height:80%"></div>
+                  <div class="tl-wave-bar" style="height:60%"></div>
+                  <div class="tl-wave-bar" style="height:90%"></div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- ASR row 2 -->
+          <div class="tl-asr">
+            <div class="tl-asr-text">
+              这种方案能让编辑者在有限的屏幕宽度内 纵览更长的时间跨度 同时保持对每一帧细节的精确控制
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="scroll-hint">
+      <span>SCROLL</span>
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+        <path d="M12 5v14M5 12l7 7 7-7"/>
+      </svg>
+    </div>
+  </section>
+
+  <!-- Features -->
+  <section class="features-section" id="features">
+    <div class="container">
+      <div class="section-label">Core Features</div>
+      <div class="section-title">为长视频剪辑而生</div>
+      <div class="section-desc">
+        每一个特性都围绕「在有限屏幕内高效编辑长内容」这一核心命题展开。
+      </div>
+
+      <div class="features-grid">
+        <div class="feature-card">
+          <div class="feature-icon">
+            <svg viewBox="0 0 36 36" fill="none" stroke="currentColor" stroke-width="1.5">
+              <path d="M4 10h28M4 18h28M4 26h28" stroke="#c5a46c"/>
+              <path d="M30 8l-4 4 4 4" stroke="#5b8cb8" opacity="0.6"/>
+            </svg>
+          </div>
+          <h3>多行折叠时间轴</h3>
+          <p>长视频自动折叠为多行显示，在有限宽度内纵览全局。跨行片段智能切割，层级自动装箱排列。</p>
+        </div>
+
+        <div class="feature-card">
+          <div class="feature-icon">
+            <svg viewBox="0 0 36 36" fill="none" stroke="currentColor" stroke-width="1.5">
+              <rect x="4" y="8" width="28" height="20" rx="2" stroke="#c5a46c"/>
+              <path d="M8 15h10M8 19h14M8 23h8" stroke="#5b8cb8" opacity="0.6"/>
+              <circle cx="28" cy="14" r="3" stroke="#c0392b" opacity="0.5"/>
+            </svg>
+          </div>
+          <h3>ASR 文字轨整合</h3>
+          <p>语音识别文本与时间轴深度绑定。词级高亮跟踪播放进度，点击跳转，删除区间自动标记对应文字。</p>
+        </div>
+
+        <div class="feature-card">
+          <div class="feature-icon">
+            <svg viewBox="0 0 36 36" fill="none" stroke="currentColor" stroke-width="1.5">
+              <rect x="6" y="12" width="24" height="12" rx="2" stroke="#5b8cb8"/>
+              <rect x="12" y="10" width="8" height="16" rx="1" stroke="#c0392b" fill="rgba(192,57,43,0.1)"/>
+              <line x1="12" y1="10" x2="12" y2="26" stroke="#c0392b" stroke-dasharray="2 2"/>
+              <line x1="20" y1="10" x2="20" y2="26" stroke="#c0392b" stroke-dasharray="2 2"/>
+            </svg>
+          </div>
+          <h3>区间删除编辑</h3>
+          <p>框选或精确定义删除区间，自动合并重叠范围。导出时无缝跳过删除片段，时间戳自动修正。</p>
+        </div>
+
+        <div class="feature-card">
+          <div class="feature-icon">
+            <svg viewBox="0 0 36 36" fill="none" stroke="currentColor" stroke-width="1.5">
+              <path d="M8 28V8" stroke="#5b8cb8"/>
+              <path d="M12 28v-10M16 28v-16M20 28v-8M24 28v-14M28 28v-12" stroke="#c5a46c" opacity="0.6"/>
+            </svg>
+          </div>
+          <h3>音频波形可视化</h3>
+          <p>一次性解码 + rawPeaks 缓存 + 按需降采样。5 分钟视频的波形从 20 秒加载优化至毫秒级。</p>
+        </div>
+
+        <div class="feature-card">
+          <div class="feature-icon">
+            <svg viewBox="0 0 36 36" fill="none" stroke="currentColor" stroke-width="1.5">
+              <rect x="6" y="8" width="10" height="8" rx="1" stroke="#5b8cb8"/>
+              <rect x="20" y="8" width="10" height="8" rx="1" stroke="#5b8cb8"/>
+              <rect x="6" y="20" width="10" height="8" rx="1" stroke="#5b8cb8"/>
+              <rect x="20" y="20" width="10" height="8" rx="1" stroke="#5b8cb8"/>
+            </svg>
+          </div>
+          <h3>视频缩略图提取</h3>
+          <p>IntersectionObserver 驱动懒加载，仅提取可视区域内帧。批量缓存 + 分步渲染，滚动始终流畅。</p>
+        </div>
+
+        <div class="feature-card">
+          <div class="feature-icon">
+            <svg viewBox="0 0 36 36" fill="none" stroke="currentColor" stroke-width="1.5">
+              <path d="M8 18h20" stroke="#c5a46c"/>
+              <path d="M24 14l4 4-4 4" stroke="#c5a46c"/>
+              <rect x="6" y="10" width="6" height="16" rx="1" stroke="#5b8cb8"/>
+              <rect x="26" y="10" width="6" height="16" rx="1" stroke="#6b9e78"/>
+            </svg>
+          </div>
+          <h3>流式视频导出</h3>
+          <p>StreamTarget 逐帧写入文件，避免内存溢出。有效片段自动拼接，大文件导出稳定可靠。</p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- Folding Timeline highlight -->
+  <section id="folding">
+    <div class="container">
+      <div class="highlight-section">
+        <div>
+          <div class="section-label">Signature Feature</div>
+          <div class="section-title">折叠，而非滚动</div>
+          <div class="section-desc">
+            传统时间轴以水平滚动应对长内容，编辑者永远只能看到一小段。
+            DimCut 将时间轴像书页一样折叠——每一行都是一段连续的时间窗口，
+            跨行的片段被智能切割为可见切片。
+          </div>
+          <div class="section-desc" style="margin-top:1.5rem; font-size: 0.8rem; color: var(--accent-dim); letter-spacing: 0.05em;">
+            <code style="background:var(--bg-card);padding:2px 8px;border-radius:3px;border:1px solid var(--border);">
+              computeRows() → assignItemsToRows() → packItemsInRow()
+            </code>
+          </div>
+        </div>
+
+        <div class="highlight-visual">
+          <div class="fold-demo">
+            <div style="font-size:0.6rem;color:var(--text-dim);opacity:0.5;margin-bottom:8px;letter-spacing:0.15em;">TRADITIONAL → FOLDED</div>
+
+            <div style="margin-bottom:12px;">
+              <div style="font-size:0.6rem;color:var(--text-dim);opacity:0.3;margin-bottom:4px;">线性布局（需要滚动 →→→）</div>
+              <div style="display:flex;gap:2px;overflow:hidden;padding:6px;background:var(--bg-subtle);border-radius:4px;position:relative;">
+                <div class="fold-mini-clip" style="flex:3;opacity:0.9;"></div>
+                <div class="fold-mini-clip" style="flex:2;opacity:0.7;"></div>
+                <div class="fold-mini-clip" style="flex:4;opacity:0.5;"></div>
+                <div class="fold-mini-clip" style="flex:3;opacity:0.3;"></div>
+                <div style="position:absolute;right:0;top:0;bottom:0;width:40px;background:linear-gradient(to right,transparent,var(--bg-subtle));"></div>
+              </div>
+            </div>
+
+            <div class="fold-arrow">↓ fold</div>
+
+            <div>
+              <div style="font-size:0.6rem;color:var(--text-dim);opacity:0.3;margin-bottom:4px;">折叠布局（全局可见）</div>
+              <div class="fold-row">
+                <div class="row-num">1</div>
+                <div class="row-content">
+                  <div class="fold-mini-clip" style="flex:3;"></div>
+                  <div class="fold-mini-clip" style="flex:2;"></div>
+                  <div class="fold-mini-clip" style="flex:1;"></div>
+                </div>
+              </div>
+              <div class="fold-mini-asr">在这个项目中 我们需要重新审视 时间轴的…</div>
+              <div class="fold-row">
+                <div class="row-num">2</div>
+                <div class="row-content">
+                  <div class="fold-mini-clip" style="flex:2;"></div>
+                  <div class="fold-mini-clip" style="flex:3;"></div>
+                </div>
+              </div>
+              <div class="fold-mini-asr">这种方案能让编辑者在有限的屏幕宽度内…</div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ASR highlight -->
+  <section id="asr" style="background: linear-gradient(180deg, var(--bg) 0%, var(--bg-subtle) 50%, var(--bg) 100%);">
+    <div class="container">
+      <div class="highlight-section reverse">
+        <div>
+          <div class="section-label">Deep Integration</div>
+          <div class="section-title">文字即时间轴</div>
+          <div class="section-desc">
+            ASR 文字轨不是附属品，而是时间轴的一等公民。
+            每个词都映射到精确的时间戳——播放时实时高亮，点击即跳转，
+            删除区间内的文字自动标记为删除线样式。
+          </div>
+          <div class="section-desc" style="margin-top:1.5rem;">
+            文字与画面，终于说同一种语言。
+          </div>
+        </div>
+
+        <div class="highlight-visual">
+          <div class="diagram" style="line-height:2.2;">
+            <span class="cm">// ASR 数据结构</span><br>
+            <span class="kw">interface</span> <span class="fn">AsrWord</span> {<br>
+            &nbsp;&nbsp;text: <span class="str">string</span><br>
+            &nbsp;&nbsp;start: <span class="str">number</span> <span class="cm">// 精确到毫秒</span><br>
+            &nbsp;&nbsp;end: <span class="str">number</span><br>
+            }<br><br>
+            <span class="cm">// 词级别交互</span><br>
+            <span class="fn">onClick</span>(word) → <span class="kw">seek</span>(word.start)<br>
+            <span class="fn">onPlay</span>(t) → <span class="kw">highlight</span>(word)<br>
+            <span class="fn">onDelete</span>(range) → <span class="kw">strikethrough</span>(words)<br>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- Tech & API -->
+  <section>
+    <div class="container">
+      <div class="section-label">Built With</div>
+      <div class="section-title">精选技术栈</div>
+      <div class="section-desc">
+        以 SolidJS 的细粒度响应式驱动渲染，确保大量轨道片段更新时不产生多余重绘。
+      </div>
+
+      <div class="tech-row">
+        <div class="tech-item">
+          <div class="tech-badge" style="color:var(--blue);">S</div>
+          <span>SolidJS — 细粒度响应式</span>
+        </div>
+        <div class="tech-item">
+          <div class="tech-badge" style="color:var(--accent);">TS</div>
+          <span>TypeScript — 完整类型</span>
+        </div>
+        <div class="tech-item">
+          <div class="tech-badge" style="color:var(--green);">MB</div>
+          <span>mediabunny — 多媒体引擎</span>
+        </div>
+        <div class="tech-item">
+          <div class="tech-badge" style="color:#8b5cf6;">TW</div>
+          <span>TailwindCSS v4</span>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- CTA -->
+  <section class="cta-section" id="start">
+    <div class="container">
+      <div class="section-label">Get Started</div>
+      <div class="section-title">三行代码，完整剪辑时间轴</div>
+      <div class="section-desc">
+        作为标准 NPM 包发布，零配置接入任何 SolidJS 项目。
+      </div>
+
+      <div class="install-cmd">
+        <span class="prefix">$</span>
+        <span>pnpm add dimcut</span>
+      </div>
+
+      <div style="margin-top:3rem;">
+        <div class="highlight-visual" style="max-width:600px;margin:0 auto;">
+          <div class="diagram" style="text-align:left;line-height:2.2;">
+            <span class="kw">import</span> { <span class="fn">Timeline</span>, <span class="fn">PreviewPlayer</span> } <span class="kw">from</span> <span class="str">'dimcut'</span><br><br>
+            <span class="cm">// 传入素材数据，即获得完整时间轴</span><br>
+            &lt;<span class="fn">Timeline</span><br>
+            &nbsp;&nbsp;<span class="str">initData</span>={data}<br>
+            &nbsp;&nbsp;<span class="str">onChange</span>={handleChange}<br>
+            &nbsp;&nbsp;<span class="str">currentTime</span>={time()}<br>
+            &nbsp;&nbsp;<span class="str">onSeek</span>={setTime}<br>
+            /&gt;
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- Footer -->
+  <footer>
+    <p>DimCut — 折叠时间，裁剪光影</p>
+  </footer>
+
+</body>
+</html>
