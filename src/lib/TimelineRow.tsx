@@ -1,4 +1,4 @@
-import { type Component, For, Show, createSignal } from "solid-js";
+import { type Component, For, Index, Show, createSignal } from "solid-js";
 import type {
   AsrData,
   DeletedRange,
@@ -236,14 +236,14 @@ export const TimelineRow: Component<TimelineRowProps> = (props) => {
           }}
         </Show>
 
-        <For each={effectiveLayers()}>
+        <Index each={effectiveLayers()}>
           {(layer, layerIdx) => (
-            <For each={layer}>
+            <Index each={layer()}>
               {(slice) => {
                 const top = () => {
                   let cumulativeTop = overlayBaseTop();
                   const layers = effectiveLayers();
-                  for (let i = 0; i < layerIdx(); i++) {
+                  for (let i = 0; i < layerIdx; i++) {
                     const prevLayer = layers[i];
                     const maxSub = prevLayer.reduce(
                       (m, s) => Math.max(m, s.subRow),
@@ -253,7 +253,7 @@ export const TimelineRow: Component<TimelineRowProps> = (props) => {
                       (maxSub + 1) * (ROW_ITEM_HEIGHT + TRACK_GAP);
                   }
                   return (
-                    cumulativeTop + slice.subRow * (ROW_ITEM_HEIGHT + TRACK_GAP)
+                    cumulativeTop + slice().subRow * (ROW_ITEM_HEIGHT + TRACK_GAP)
                   );
                 };
 
@@ -263,38 +263,38 @@ export const TimelineRow: Component<TimelineRowProps> = (props) => {
                     style={{ top: `${top()}px` }}
                     data-track-item
                   >
-                    {slice.item.type === "audio" &&
-                    props.itemWaveformExtractors?.get(slice.item.id) ? (
+                    {slice().item.type === "audio" &&
+                    props.itemWaveformExtractors?.get(slice().item.id) ? (
                       <AudioTrackItem
                         extractor={props.itemWaveformExtractors.get(
-                          slice.item.id,
+                          slice().item.id,
                         )!}
-                        visibleStart={slice.visibleStart}
-                        visibleEnd={slice.visibleEnd}
+                        visibleStart={slice().visibleStart}
+                        visibleEnd={slice().visibleEnd}
                         rowStartTime={props.row.startTime}
                         pixelsPerSecond={props.pixelsPerSecond}
                         left={timeToPixel(
-                          slice.visibleStart,
+                          slice().visibleStart,
                           props.row.startTime,
                           props.pixelsPerSecond,
                         )}
                         width={
-                          (slice.visibleEnd - slice.visibleStart) *
+                          (slice().visibleEnd - slice().visibleStart) *
                           props.pixelsPerSecond
                         }
-                        item={slice.item}
+                        item={slice().item}
                         onDragStart={props.onItemDragStart}
                       />
                     ) : (
                       <TrackItem
-                        item={slice.item}
+                        item={slice().item}
                         left={timeToPixel(
-                          slice.visibleStart,
+                          slice().visibleStart,
                           props.row.startTime,
                           props.pixelsPerSecond,
                         )}
                         width={
-                          (slice.visibleEnd - slice.visibleStart) *
+                          (slice().visibleEnd - slice().visibleStart) *
                           props.pixelsPerSecond
                         }
                         onDragStart={props.onItemDragStart}
@@ -303,9 +303,9 @@ export const TimelineRow: Component<TimelineRowProps> = (props) => {
                   </div>
                 );
               }}
-            </For>
+            </Index>
           )}
-        </For>
+        </Index>
 
         <Show when={nonAsrHeight() > 0}>
           <For each={visibleDeletedRanges()}>

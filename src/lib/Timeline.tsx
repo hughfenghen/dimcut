@@ -26,9 +26,11 @@ import { WaveformExtractor } from "./waveform-extractor.ts";
 export const Timeline: Component<TimelineProps> = (props) => {
   const pps = () => props.pixelsPerSecond ?? DEFAULT_PIXELS_PER_SECOND;
 
-  const totalDuration = () =>
-    props.initData.mainTrackConf.item.endTime -
-    props.initData.mainTrackConf.item.startTime;
+  const totalDuration = createMemo(
+    () =>
+      props.initData.mainTrackConf.item.endTime -
+      props.initData.mainTrackConf.item.startTime,
+  );
 
   const [items, setItems] = createSignal<Item[]>(props.initData.items);
   const [deletedRanges, setDeletedRanges] = createSignal<DeletedRange[]>(
@@ -85,7 +87,7 @@ export const Timeline: Component<TimelineProps> = (props) => {
     computeRows(totalDuration(), containerWidth(), pps()),
   );
 
-  const mainTrackItem = () => props.initData.mainTrackConf.item;
+  const mainTrackItem = createMemo(() => props.initData.mainTrackConf.item);
 
   const itemsByRow = createMemo(() => assignItemsToRows(items(), rows()));
 
@@ -105,24 +107,25 @@ export const Timeline: Component<TimelineProps> = (props) => {
   });
 
   // --- Thumbnail extractor ---
+  const mainTrackFile = createMemo(() => {
+    const item = props.initData.mainTrackConf.item;
+    return item.type === "video" && "file" in item ? item.file : null;
+  });
+
   const [extractor, setExtractor] = createSignal<
     ThumbnailExtractor | undefined
   >();
 
   createEffect(
-    on(
-      () => props.initData.mainTrackConf.item,
-      (item) => {
-        // Dispose previous extractor
-        extractor()?.dispose();
-        setExtractor(undefined);
+    on(mainTrackFile, (file) => {
+      extractor()?.dispose();
+      setExtractor(undefined);
 
-        if (item.type === "video" && "file" in item) {
-          const ext = new ThumbnailExtractor(item.file);
-          ext.init().then(() => setExtractor(ext));
-        }
-      },
-    ),
+      if (file) {
+        const ext = new ThumbnailExtractor(file);
+        ext.init().then(() => setExtractor(ext));
+      }
+    }),
   );
 
   onCleanup(() => {
@@ -130,23 +133,25 @@ export const Timeline: Component<TimelineProps> = (props) => {
   });
 
   // --- Waveform extractor ---
+  const mainTrackAnyFile = createMemo(() => {
+    const item = props.initData.mainTrackConf.item;
+    return "file" in item ? item.file : null;
+  });
+
   const [waveformExt, setWaveformExt] = createSignal<
     WaveformExtractor | undefined
   >();
 
   createEffect(
-    on(
-      () => props.initData.mainTrackConf.item,
-      (item) => {
-        waveformExt()?.dispose();
-        setWaveformExt(undefined);
+    on(mainTrackAnyFile, (file) => {
+      waveformExt()?.dispose();
+      setWaveformExt(undefined);
 
-        if ("file" in item) {
-          const ext = new WaveformExtractor(item.file);
-          ext.init().then(() => setWaveformExt(ext));
-        }
-      },
-    ),
+      if (file) {
+        const ext = new WaveformExtractor(file);
+        ext.init().then(() => setWaveformExt(ext));
+      }
+    }),
   );
 
   onCleanup(() => {
@@ -187,6 +192,15 @@ export const Timeline: Component<TimelineProps> = (props) => {
         if (!next.has(id)) {
           ext.dispose();
         }
+      }
+
+      // Skip update if map content is identical (e.g. during drag, only positions change)
+      if (next.size === prev.size) {
+        let same = true;
+        for (const [k, v] of next) {
+          if (prev.get(k) !== v) { same = false; break; }
+        }
+        if (same) return;
       }
 
       setItemWaveformExtractors(next);
@@ -239,15 +253,15 @@ export const Timeline: Component<TimelineProps> = (props) => {
           : it,
       );
       setItems(newItems as Item[]);
-      emitChange(newItems as Item[]);
     };
 
     const onUp = () => {
       setDragItemId(null);
       window.removeEventListener("mousemove", onMove);
       window.removeEventListener("mouseup", onUp);
-      // If no drag happened, treat as seek
-      if (!moved && props.onSeek) {
+      if (moved) {
+        emitChange();
+      } else if (props.onSeek) {
         const time = mouseToTime(startX, startY);
         props.onSeek(time);
       }
@@ -522,9 +536,11 @@ export const Timeline: Component<TimelineProps> = (props) => {
     >
       <For each={rows()}>
         {(row) => {
-          const mainSlices = () => mainSlicesByRow().get(row.rowIndex) ?? [];
-          const mainSlice = () => mainSlices()[0];
-          const overlayLayers = () => layersByRow().get(row.rowIndex) ?? [];
+          const mainSlice = createMemo(() => mainSlicesByRow().get(row.rowIndex)?.[0]);
+          const overlayLayers = createMemo(() => layersByRow().get(row.rowIndex) ?? []);
+          const ext = createMemo(() => extractor());
+          const wfExt = createMemo(() => waveformExt());
+          const itemWfExts = createMemo(() => itemWaveformExtractors());
 
           return (
             <div class="border-b border-gray-200" data-row-index={row.rowIndex}>
@@ -539,9 +555,9 @@ export const Timeline: Component<TimelineProps> = (props) => {
                 onRemoveDeletedRange={handleRemoveDeletedRange}
                 onRangeSelectStart={handleRangeSelectStart}
                 selectionRange={selectionRange() ?? undefined}
-                thumbnailExtractor={extractor()}
-                waveformExtractor={waveformExt()}
-                itemWaveformExtractors={itemWaveformExtractors()}
+                thumbnailExtractor={ext()}
+                waveformExtractor={wfExt()}
+                itemWaveformExtractors={itemWfExts()}
                 currentTime={props.currentTime}
                 onSeek={props.onSeek}
                 showAsrTrack={props.showAsrTrack}

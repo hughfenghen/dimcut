@@ -406,7 +406,6 @@ const App: Component = () => {
                     currentTime={currentTime()}
                     onSeek={(time) => setCurrentTime(time)}
                     onChange={(arg) => {
-                      console.log("onChange", arg);
                       setDeletedRanges(arg.deletedRanges ?? []);
                       if (arg.items) {
                         setData((d) => (d ? { ...d, items: arg.items! } : d));

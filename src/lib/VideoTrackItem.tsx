@@ -1,4 +1,11 @@
-import { type Component, createEffect, createSignal, on, onCleanup, Show } from "solid-js";
+import {
+  type Component,
+  createEffect,
+  createSignal,
+  on,
+  onCleanup,
+  Show,
+} from "solid-js";
 import { ITEM_COLORS, MAIN_TRACK_HEIGHT } from "./constants.ts";
 import {
   computeThumbnailParams,
@@ -24,7 +31,9 @@ export const VideoTrackItem: Component<VideoTrackItemProps> = (props) => {
   let canvasRef: HTMLCanvasElement | undefined;
   let throttleTimer: ReturnType<typeof setTimeout> | null = null;
   const [isVisible, setIsVisible] = createSignal(false);
-  const [waveformData, setWaveformData] = createSignal<Float32Array>(new Float32Array(0));
+  const [waveformData, setWaveformData] = createSignal<Float32Array>(
+    new Float32Array(0),
+  );
   let hasDrawn = false;
   let lastDrawnPps = 0;
 
@@ -45,9 +54,7 @@ export const VideoTrackItem: Component<VideoTrackItemProps> = (props) => {
     if (!videoInfo) return;
 
     const pps = props.pixelsPerSecond;
-    const width = Math.ceil(
-      (props.visibleEnd - props.visibleStart) * pps,
-    );
+    const width = Math.ceil((props.visibleEnd - props.visibleStart) * pps);
     const height = MAIN_TRACK_HEIGHT;
 
     const dpr = window.devicePixelRatio || 1;
@@ -87,7 +94,13 @@ export const VideoTrackItem: Component<VideoTrackItemProps> = (props) => {
       step,
     )) {
       const x = (time - props.visibleStart) * pps;
-      ctx.drawImage(thumbCanvas as CanvasImageSource, x, 0, thumbnailWidth, height);
+      ctx.drawImage(
+        thumbCanvas as CanvasImageSource,
+        x,
+        0,
+        thumbnailWidth,
+        height,
+      );
     }
 
     hasDrawn = true;
@@ -117,16 +130,13 @@ export const VideoTrackItem: Component<VideoTrackItemProps> = (props) => {
 
   // Only trigger redraw on pps change (not visibleStart/visibleEnd or deleteRanges)
   createEffect(
-    on(
-      [() => props.pixelsPerSecond, isVisible],
-      () => {
-        if (!isVisible()) return;
-        // Only redraw if pps changed or never drawn
-        if (!hasDrawn || props.pixelsPerSecond !== lastDrawnPps) {
-          throttledDraw();
-        }
-      },
-    ),
+    on([() => props.pixelsPerSecond, isVisible], () => {
+      if (!isVisible()) return;
+      // Only redraw if pps changed or never drawn
+      if (!hasDrawn || props.pixelsPerSecond !== lastDrawnPps) {
+        throttledDraw();
+      }
+    }),
   );
 
   // Load waveform when extractor becomes available after init
