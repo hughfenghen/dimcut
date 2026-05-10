@@ -198,7 +198,10 @@ export const Timeline: Component<TimelineProps> = (props) => {
       if (next.size === prev.size) {
         let same = true;
         for (const [k, v] of next) {
-          if (prev.get(k) !== v) { same = false; break; }
+          if (prev.get(k) !== v) {
+            same = false;
+            break;
+          }
         }
         if (same) return;
       }
@@ -536,8 +539,12 @@ export const Timeline: Component<TimelineProps> = (props) => {
     >
       <For each={rows()}>
         {(row) => {
-          const mainSlice = createMemo(() => mainSlicesByRow().get(row.rowIndex)?.[0]);
-          const overlayLayers = createMemo(() => layersByRow().get(row.rowIndex) ?? []);
+          const mainSlice = createMemo(
+            () => mainSlicesByRow().get(row.rowIndex)?.[0],
+          );
+          const overlayLayers = createMemo(
+            () => layersByRow().get(row.rowIndex) ?? [],
+          );
           const ext = createMemo(() => extractor());
           const wfExt = createMemo(() => waveformExt());
           const itemWfExts = createMemo(() => itemWaveformExtractors());
