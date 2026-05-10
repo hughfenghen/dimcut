@@ -1,10 +1,5 @@
-import {
-  type Component,
-  createSignal,
-  onMount,
-  For,
-  Show,
-} from "solid-js";
+import { type Component, createSignal, onMount, For, Show } from "solid-js";
+import { useI18n } from "../i18n";
 import { Timeline } from "../lib/index.ts";
 import { PreviewPlayer } from "../lib/PreviewPlayer.tsx";
 import { exportVideo, exportClips } from "../lib/video-exporter.ts";
@@ -92,6 +87,7 @@ function getMediaDuration(file: File): Promise<number> {
 }
 
 const App: Component = () => {
+  const { t } = useI18n();
   const [data, setData] = createSignal<IChangeEventData | null>(null);
   const [loading, setLoading] = createSignal(true);
   const [mainTrackDeleted, setMainTrackDeleted] = createSignal(false);
@@ -248,7 +244,7 @@ const App: Component = () => {
           />
         </svg>
       ),
-      label: "添加片段",
+      label: t("demoApp.clipsTitle"),
       onClick: (selection) => {
         setClips((prev) => [
           ...prev,
@@ -301,10 +297,8 @@ const App: Component = () => {
   };
 
   return (
-    <div class="min-w-[1400px] max-w-[1400px] mx-auto p-4">
+    <div class="max-w-[1400px] mx-auto p-4">
       <section>
-        <h1 class="text-xl font-bold mb-4">Basic</h1>
-
         <div class="mb-4 flex items-center gap-3">
           <div class="flex items-center gap-1">
             <button
@@ -352,7 +346,7 @@ const App: Component = () => {
               onChange={(e) => setShowAsrTrack(e.currentTarget.checked)}
               class="accent-black"
             />
-            ASR 文字轨
+            {t("demoApp.asrTrack")}
           </label>
           <label class="text-sm text-black flex items-center gap-1">
             <input
@@ -361,14 +355,14 @@ const App: Component = () => {
               onChange={(e) => setShowMediaTracks(e.currentTarget.checked)}
               class="accent-black"
             />
-            媒体轨
+            {t("demoApp.mediaTracks")}
           </label>
           <div class="ml-4">
             <button
               class="px-3 py-1 text-sm bg-white text-black border border-gray-300 rounded hover:bg-gray-50"
               onClick={() => setShowAssetsModal(true)}
             >
-              素材管理
+              {t("demoApp.assetManager")}
             </button>
           </div>
           <div>
@@ -377,14 +371,14 @@ const App: Component = () => {
               onClick={handleExport}
               disabled={exporting() || !data() || mainTrackDeleted()}
             >
-              {exporting() ? "导出中..." : "导出裁剪"}
+              {exporting() ? t("demoApp.exporting") : t("demoApp.exportTrim")}
             </button>
           </div>
         </div>
 
         {loading() && (
           <div class="text-gray-500 text-sm py-8 text-center">
-            Loading demo data...
+            {t("demoApp.loading")}
           </div>
         )}
 
@@ -395,7 +389,7 @@ const App: Component = () => {
                 when={!mainTrackDeleted()}
                 fallback={
                   <div class="py-12 text-center text-gray-400 text-sm">
-                    主轨素材已移除
+                    {t("demoApp.mainTrackRemoved")}
                   </div>
                 }
               >
@@ -412,9 +406,9 @@ const App: Component = () => {
                       }
                     }}
                     showAsrTrack={showAsrTrack()}
-                      showMediaTracks={showMediaTracks()}
-                      selectionMenuItems={selectionMenuItems}
-                    />
+                    showMediaTracks={showMediaTracks()}
+                    selectionMenuItems={selectionMenuItems}
+                  />
                 </Show>
               </Show>
             </div>
@@ -424,7 +418,7 @@ const App: Component = () => {
                 when={!mainTrackDeleted()}
                 fallback={
                   <div class="w-full rounded border border-gray-300 bg-gray-50 py-8 text-center text-gray-400 text-sm">
-                    主轨素材已移除
+                    {t("demoApp.mainTrackRemoved")}
                   </div>
                 }
               >
@@ -442,14 +436,18 @@ const App: Component = () => {
 
               <div class="mt-4 border border-gray-300 rounded bg-white p-3">
                 <div class="flex items-center justify-between mb-2">
-                  <h3 class="text-sm font-semibold text-gray-800">摘录片段</h3>
+                  <h3 class="text-sm font-semibold text-gray-800">
+                    {t("demoApp.clipsTitle")}
+                  </h3>
                   <Show when={clips().length > 0}>
                     <button
                       class="px-2 py-0.5 text-xs bg-black text-white rounded hover:bg-gray-800 disabled:opacity-50 disabled:cursor-not-allowed"
                       onClick={handleExportClips}
                       disabled={exportingClips()}
                     >
-                      {exportingClips() ? "导出中..." : "导出片段"}
+                      {exportingClips()
+                        ? t("demoApp.exporting")
+                        : t("demoApp.exportClips")}
                     </button>
                   </Show>
                 </div>
@@ -458,7 +456,7 @@ const App: Component = () => {
                   when={clips().length > 0}
                   fallback={
                     <div class="text-xs text-gray-400 py-4 text-center">
-                      在时间轴上选择区间，点击 + 按钮添加片段
+                      {t("demoApp.noClipsHint")}
                     </div>
                   }
                 >
@@ -507,13 +505,6 @@ const App: Component = () => {
             </div>
           </div>
         )}
-
-        <div class="mt-4 text-xs text-gray-500">
-          <p>
-            拖拽覆盖素材可移动位置 | 在空白区域拖拽可创建删除区间 |
-            悬停删除区间可移除 | 点击时间轴跳转播放位置
-          </p>
-        </div>
       </section>
 
       <Show when={showAssetsModal() && data()}>

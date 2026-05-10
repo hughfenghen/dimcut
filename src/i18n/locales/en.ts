@@ -1,0 +1,80 @@
+export const en: Record<string, string> = {
+  "nav.concept": "CONCEPT",
+  "nav.demo": "DEMO",
+  "nav.github": "GITHUB ↗",
+  "nav.langToggle": "中文",
+
+  "hero.subtitle": "A text-first video timeline",
+  "hero.title1": "Edit your timeline",
+  "hero.title2": "like reading a",
+  "hero.titleEm": "script",
+  "hero.subtitleLine": "Read your timeline like a",
+  "hero.subtitleEm": "script",
+  "hero.desc1":
+    "A multi-line, text-first timeline for podcasts and talking-head videos — no more horizontal scrubbing.",
+  "hero.ctaPrimary": "Try it now",
+  "hero.ctaSecondary": "Read the rationale",
+  "hero.scroll": "SCROLL",
+
+  "concept.sectionLabel": "Rationale",
+  "concept.title1": "For most talking content, editing is",
+  "concept.titleEm": "finding ideas",
+  "concept.title2": ", not frame-perfect timing.",
+  "concept.p1.roman": "I.",
+  "concept.p1.title": "Break the 1D timeline.",
+  "concept.p1.desc":
+    "Reading replaces horizontal scrubbing — paging instead of dragging.",
+  "concept.p2.roman": "II.",
+  "concept.p2.title": "Pack clips densely.",
+  "concept.p2.desc":
+    "Video, audio and images coexist on a single track when they don't collide — higher information density, fewer rows.",
+  "concept.p3.roman": "III.",
+  "concept.p3.title": "Read, don't scrub.",
+  "concept.p3.desc":
+    "Speech transcripts become the primary navigation layer — editing podcasts feels like editing a document.",
+
+  "demo.sectionLabel": "Live demo",
+  "demo.title1": "Try it on a real video.",
+  "demo.titleEm": "Right here.",
+  "demo.desc":
+    "All processing happens locally in your browser — nothing is uploaded.",
+
+  "footer.copyright": "© 2026 DimCut · by",
+  "footer.author": "Fenghen",
+  "footer.github": "GitHub ↗",
+
+  "illust.title": "dimcut.timeline",
+  "illust.video": "VIDEO",
+  "illust.audio": "AUDIO",
+  "illust.img": "IMG",
+  "illust.asrText1": "so the idea is",
+  "illust.asrHighlight": "text-first editing",
+  "illust.asrStrike": "scrubbing the waveform",
+  "illust.asrText2": "reading the transcript",
+
+  "demoApp.asrTrack": "ASR Track",
+  "demoApp.mediaTracks": "Media Tracks",
+  "demoApp.assetManager": "Assets",
+  "demoApp.exportTrim": "Export Trim",
+  "demoApp.exporting": "Exporting...",
+  "demoApp.loading": "Loading demo data...",
+  "demoApp.mainTrackRemoved": "Main track removed",
+  "demoApp.clipsTitle": "Clips",
+  "demoApp.exportClips": "Export Clips",
+  "demoApp.noClipsHint":
+    "Select a range on the timeline, then click + to add a clip",
+
+  "demoModal.title": "Asset Manager",
+  "demoModal.mainTrack": "Main Track",
+  "demoModal.mainTrackBadge": "Main",
+  "demoModal.mainTrackRemoved": "Main track removed",
+  "demoModal.replaceAsset": "Replace",
+  "demoModal.delete": "Delete",
+  "demoModal.asrRemoved": "ASR removed",
+  "demoModal.importAsr": "Import ASR",
+  "demoModal.overlayAssets": "Overlay Assets",
+  "demoModal.noOverlay": "No overlay assets yet — click below to import",
+  "demoModal.importAsset": "Import Assets",
+  "demoModal.replaceTrack": "Replace Source",
+  "demoModal.invalidAsr": "Invalid ASR JSON file",
+};

@@ -1,4 +1,5 @@
 import { type Component, For, Show } from "solid-js";
+import { useI18n } from "../i18n";
 import type { AsrData, IChangeEventData } from "../lib/types.ts";
 import { formatTime } from "../lib/time-utils.ts";
 import { ITEM_COLORS } from "../lib/constants.ts";
@@ -16,18 +17,19 @@ interface AssetManagerModalProps {
   onClose: () => void;
 }
 
-const TYPE_LABELS: Record<string, string> = {
-  video: "视频",
-  audio: "音频",
-  image: "图片",
-  text: "文本",
-  asr: "ASR",
+const TYPE_LABEL_KEYS: Record<string, string> = {
+  video: "illust.video",
+  audio: "illust.audio",
+  image: "illust.img",
+  text: "illust.img",
 };
 
 export const AssetManagerModal: Component<AssetManagerModalProps> = (props) => {
   let mainTrackFileInput: HTMLInputElement | undefined;
   let asrFileInput: HTMLInputElement | undefined;
   let importFileInput: HTMLInputElement | undefined;
+
+  const { t } = useI18n();
 
   const handleReplaceMainTrack = () => mainTrackFileInput?.click();
   const handleImportAsr = () => asrFileInput?.click();
@@ -51,7 +53,7 @@ export const AssetManagerModal: Component<AssetManagerModalProps> = (props) => {
         asrData.filename = file.name;
         props.onImportAsr(asrData);
       } catch {
-        alert("无效的 ASR JSON 文件");
+        alert(t("demoModal.invalidAsr"));
       }
       input.value = "";
     }
@@ -78,7 +80,9 @@ export const AssetManagerModal: Component<AssetManagerModalProps> = (props) => {
     >
       <div class="bg-white rounded-lg shadow-xl w-[480px] max-h-[80vh] flex flex-col">
         <div class="flex items-center justify-between px-4 py-3 border-b border-gray-200">
-          <h2 class="text-base font-semibold text-gray-800">素材管理</h2>
+          <h2 class="text-base font-semibold text-gray-800">
+            {t("demoModal.title")}
+          </h2>
           <button
             class="text-gray-400 hover:text-gray-600 text-lg leading-none"
             onClick={props.onClose}
@@ -89,7 +93,9 @@ export const AssetManagerModal: Component<AssetManagerModalProps> = (props) => {
 
         <div class="flex-1 overflow-y-auto px-4 py-3 space-y-4">
           <div>
-            <h3 class="text-sm font-medium text-gray-600 mb-2">主轨素材</h3>
+            <h3 class="text-sm font-medium text-gray-600 mb-2">
+              {t("demoModal.mainTrack")}
+            </h3>
             <div class="space-y-1.5">
               <Show
                 when={!props.mainTrackDeleted}
@@ -97,17 +103,17 @@ export const AssetManagerModal: Component<AssetManagerModalProps> = (props) => {
                   <div class="rounded border border-dashed border-gray-300 bg-gray-50 px-3 py-2.5 flex items-center justify-between">
                     <div class="flex items-center gap-2">
                       <span class="text-xs px-1.5 py-0.5 rounded bg-gray-200 text-gray-500">
-                        主轨
+                        {t("demoModal.mainTrackBadge")}
                       </span>
                       <span class="text-sm text-gray-400">
-                        主轨素材已移除
+                        {t("demoModal.mainTrackRemoved")}
                       </span>
                     </div>
                     <button
                       class="text-xs px-2 py-1 bg-black text-white rounded hover:bg-gray-800"
                       onClick={handleReplaceMainTrack}
                     >
-                      替换素材
+                      {t("demoModal.replaceTrack")}
                     </button>
                   </div>
                 }
@@ -116,9 +122,12 @@ export const AssetManagerModal: Component<AssetManagerModalProps> = (props) => {
                   <div class="flex items-center gap-2 min-w-0">
                     <span
                       class="text-xs px-1.5 py-0.5 rounded flex-shrink-0 text-gray-700"
-                      style={{ "background-color": ITEM_COLORS[props.data.mainTrackConf.item.type] }}
+                      style={{
+                        "background-color":
+                          ITEM_COLORS[props.data.mainTrackConf.item.type],
+                      }}
                     >
-                      {TYPE_LABELS[props.data.mainTrackConf.item.type]}
+                      {t(TYPE_LABEL_KEYS[props.data.mainTrackConf.item.type] ?? "illust.video")}
                     </span>
                     <span class="text-sm text-gray-800 truncate">
                       {props.data.mainTrackConf.item.file.name}
@@ -135,13 +144,13 @@ export const AssetManagerModal: Component<AssetManagerModalProps> = (props) => {
                       class="text-xs px-2 py-1 text-gray-500 hover:text-black rounded hover:bg-gray-100"
                       onClick={handleReplaceMainTrack}
                     >
-                      替换
+                      {t("demoModal.replaceAsset")}
                     </button>
                     <button
                       class="text-xs px-2 py-1 text-red-400 hover:text-red-600 rounded hover:bg-red-50"
                       onClick={props.onDeleteMainTrack}
                     >
-                      删除
+                      {t("demoModal.delete")}
                     </button>
                   </div>
                 </div>
@@ -159,13 +168,15 @@ export const AssetManagerModal: Component<AssetManagerModalProps> = (props) => {
                         >
                           ASR
                         </span>
-                        <span class="text-sm text-gray-400">ASR 已移除</span>
+                        <span class="text-sm text-gray-400">
+                          {t("demoModal.asrRemoved")}
+                        </span>
                       </div>
                       <button
                         class="text-xs px-2 py-1 bg-black text-white rounded hover:bg-gray-800"
                         onClick={handleImportAsr}
                       >
-                        导入 ASR
+                        {t("demoModal.importAsr")}
                       </button>
                     </div>
                   </Show>
@@ -185,7 +196,8 @@ export const AssetManagerModal: Component<AssetManagerModalProps> = (props) => {
                     <span class="text-xs text-gray-400 flex-shrink-0">
                       {(() => {
                         const segs = props.data.mainTrackConf.asrData!.segments;
-                        const lastEnd = segs.length > 0 ? segs[segs.length - 1].end : 0;
+                        const lastEnd =
+                          segs.length > 0 ? segs[segs.length - 1].end : 0;
                         return formatTime(lastEnd);
                       })()}
                     </span>
@@ -195,13 +207,13 @@ export const AssetManagerModal: Component<AssetManagerModalProps> = (props) => {
                       class="text-xs px-2 py-1 text-gray-500 hover:text-black rounded hover:bg-gray-100"
                       onClick={handleImportAsr}
                     >
-                      替换
+                      {t("demoModal.replaceAsset")}
                     </button>
                     <button
                       class="text-xs px-2 py-1 text-red-400 hover:text-red-600 rounded hover:bg-red-50"
                       onClick={props.onDeleteAsr}
                     >
-                      删除
+                      {t("demoModal.delete")}
                     </button>
                   </div>
                 </div>
@@ -210,12 +222,14 @@ export const AssetManagerModal: Component<AssetManagerModalProps> = (props) => {
           </div>
 
           <div>
-            <h3 class="text-sm font-medium text-gray-600 mb-2">叠加素材</h3>
+            <h3 class="text-sm font-medium text-gray-600 mb-2">
+              {t("demoModal.overlayAssets")}
+            </h3>
             <Show
               when={props.data.items.length > 0}
               fallback={
                 <div class="text-xs text-gray-400 py-3 text-center">
-                  暂无叠加素材，点击下方按钮导入
+                  {t("demoModal.noOverlay")}
                 </div>
               }
             >
@@ -226,9 +240,12 @@ export const AssetManagerModal: Component<AssetManagerModalProps> = (props) => {
                       <div class="flex items-center gap-2 min-w-0">
                         <span
                           class="text-xs px-1.5 py-0.5 rounded flex-shrink-0 text-gray-700"
-                          style={{ "background-color": ITEM_COLORS[item.type] ?? "#E5E7EB" }}
+                          style={{
+                            "background-color":
+                              ITEM_COLORS[item.type] ?? "#E5E7EB",
+                          }}
                         >
-                          {TYPE_LABELS[item.type] ?? item.type}
+                          {t(TYPE_LABEL_KEYS[item.type] ?? "illust.video")}
                         </span>
                         <span class="text-sm text-gray-800 truncate">
                           {"file" in item
@@ -243,7 +260,7 @@ export const AssetManagerModal: Component<AssetManagerModalProps> = (props) => {
                         class="text-xs px-2 py-1 text-red-400 hover:text-red-600 rounded hover:bg-red-50 flex-shrink-0"
                         onClick={() => props.onDeleteItem(item.id)}
                       >
-                        删除
+                        {t("demoModal.delete")}
                       </button>
                     </div>
                   )}
@@ -258,7 +275,7 @@ export const AssetManagerModal: Component<AssetManagerModalProps> = (props) => {
             class="w-full px-3 py-2 text-sm bg-black text-white rounded hover:bg-gray-800"
             onClick={handleImportItems}
           >
-            导入素材
+            {t("demoModal.importAsset")}
           </button>
         </div>
 
