@@ -6,10 +6,7 @@ export const DemoSection: Component = () => {
   const { t } = useI18n();
 
   return (
-    <section
-      id="demo"
-      class="relative overflow-hidden bg-[--color-bg-demo] py-28"
-    >
+    <section id="demo" class="relative bg-[--color-bg-demo] py-28">
       <div class="mx-auto max-w-[1200px] px-8">
         <header class="mb-12 max-w-[760px]">
           <p class="mb-4 font-sans text-[0.72rem] uppercase tracking-[0.32em] text-[--color-fg-faint]">

@@ -153,15 +153,13 @@ export const TimelineRow: Component<TimelineRowProps> = (props) => {
 
   return (
     <div
-      class="flex"
+      class="flex py-2"
       style={{
         "min-height": `${totalContentHeight()}px`,
-        "padding-top": `${TRACK_GAP}px`,
-        "padding-bottom": `${TRACK_GAP}px`,
       }}
     >
       <div
-        class="shrink-0 text-xs text-gray-400 pt-1 text-right pr-2"
+        class="shrink-0 text-xs text-gray-400 text-right pr-2"
         style={{ width: `${TIME_LABEL_WIDTH}px` }}
       >
         {formatTime(props.row.startTime)}
@@ -253,7 +251,8 @@ export const TimelineRow: Component<TimelineRowProps> = (props) => {
                       (maxSub + 1) * (ROW_ITEM_HEIGHT + TRACK_GAP);
                   }
                   return (
-                    cumulativeTop + slice().subRow * (ROW_ITEM_HEIGHT + TRACK_GAP)
+                    cumulativeTop +
+                    slice().subRow * (ROW_ITEM_HEIGHT + TRACK_GAP)
                   );
                 };
 
@@ -266,9 +265,9 @@ export const TimelineRow: Component<TimelineRowProps> = (props) => {
                     {slice().item.type === "audio" &&
                     props.itemWaveformExtractors?.get(slice().item.id) ? (
                       <AudioTrackItem
-                        extractor={props.itemWaveformExtractors.get(
-                          slice().item.id,
-                        )!}
+                        extractor={
+                          props.itemWaveformExtractors.get(slice().item.id)!
+                        }
                         visibleStart={slice().visibleStart}
                         visibleEnd={slice().visibleEnd}
                         rowStartTime={props.row.startTime}

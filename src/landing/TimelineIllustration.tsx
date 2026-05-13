@@ -115,7 +115,7 @@ export const TimelineIllustration: Component = () => {
           <TimeCell time="00:12" />
           <p class="flex-1 font-serif text-[12px] tracking-[0.01em] text-[--color-fg-dim]">
             {t("illust.textB.pre")}
-            <span class="text-[--color-accent] line-through opacity-70">
+            <span class=" bg-[rgba(255,100,100,0.7)] line-through opacity-70">
               {t("illust.textB.strike")}
             </span>
             <span class="rounded-[2px] bg-[--color-accent]/10 px-1 text-[--color-fg]">

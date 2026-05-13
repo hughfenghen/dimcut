@@ -40,9 +40,10 @@ export const PreviewPlayer: Component<PreviewPlayerProps> = (props) => {
   createEffect(
     on(
       () => props.mainTrackConf.item.file,
-      (file) => {
-        const prev = objectUrl();
-        if (prev) URL.revokeObjectURL(prev);
+      (file, prevFile) => {
+        if (file === prevFile) return;
+        const prevUrl = objectUrl();
+        if (prevUrl) URL.revokeObjectURL(prevUrl);
         setObjectUrl(URL.createObjectURL(file));
       },
     ),
@@ -168,13 +169,18 @@ export const PreviewPlayer: Component<PreviewPlayerProps> = (props) => {
     }
   };
 
-  const togglePlay = () => {
-    const el = mediaEl();
-    if (!el) return;
-    if (el.paused) {
-      props.onPlayPause(true);
-    } else {
+  const handlePause = () => {
+    stopRAF();
+    if (props.isPlaying) {
       props.onPlayPause(false);
+    }
+  };
+
+  const togglePlay = () => {
+    if (props.isPlaying) {
+      props.onPlayPause(false);
+    } else {
+      props.onPlayPause(true);
     }
   };
 
@@ -202,10 +208,11 @@ export const PreviewPlayer: Component<PreviewPlayerProps> = (props) => {
           src={objectUrl()}
           class="w-full bg-black"
           onEnded={handleEnded}
+          onPause={handlePause}
         />
       </Show>
       <Show when={!isVideo()}>
-        <audio ref={audioRef} src={objectUrl()} onEnded={handleEnded} />
+        <audio ref={audioRef} src={objectUrl()} onEnded={handleEnded} onPause={handlePause} />
         <div class="w-full h-20 bg-gray-100 flex items-center justify-center text-gray-500 text-sm">
           Audio Only
         </div>

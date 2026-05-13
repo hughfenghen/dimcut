@@ -54,7 +54,7 @@ export const AsrTrack: Component<AsrTrackProps> = (props) => {
   return (
     <div
       ref={setupResizeObserver}
-      class="relative min-h-6 leading-6 px-1 text-sm text-black whitespace-pre-wrap break-words select-text"
+      class="relative px-1 text-sm text-black whitespace-pre-wrap break-words select-text"
       data-asr-track
       style={{ "min-height": `${ASR_TRACK_HEIGHT}px` }}
     >
