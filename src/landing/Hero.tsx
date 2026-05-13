@@ -6,7 +6,10 @@ export const Hero: Component = () => {
   const { t } = useI18n();
 
   return (
-    <section id="top" class="relative flex min-h-[calc(100vh-4rem)] items-center">
+    <section
+      id="top"
+      class="relative flex min-h-[calc(100vh-4rem)] items-center"
+    >
       <div class="mx-auto grid w-full max-w-[1200px] grid-cols-1 items-center gap-16 px-8 lg:grid-cols-12">
         <div class="lg:col-span-7">
           <p class="mb-8 font-sans text-[0.72rem] uppercase tracking-[0.32em] text-[--color-fg-faint]">
@@ -19,24 +22,10 @@ export const Hero: Component = () => {
               <br />
             </Show>
             <Show when={t("hero.title2")}>{t("hero.title2")} </Show>
-            <em class="font-serif italic text-[--color-accent]">
-              {t("hero.titleEm")}
-            </em>
-            .
           </h1>
 
-          <Show when={t("hero.subtitleLine")}>
-            <p class="mt-5 font-serif text-[clamp(1.1rem,1.6vw,1.4rem)] leading-[1.5] text-[--color-fg-dim]">
-              {t("hero.subtitleLine")}{" "}
-              <em class="not-italic text-[--color-fg]">
-                {t("hero.subtitleEm")}
-              </em>{" "}
-              。
-            </p>
-          </Show>
-
           <div class="mt-5 max-w-[520px] font-sans text-[0.95rem] leading-[1.75] text-[--color-fg-dim]">
-            <p>{t("hero.desc1")}</p>
+            <pre>{t("hero.desc1")}</pre>
           </div>
 
           <div class="mt-12 flex flex-wrap items-center gap-4">

@@ -46,7 +46,7 @@ const FrameStrip: Component<{ color: string; count?: number }> = (props) => (
 );
 
 const TimeCell: Component<{ time?: string }> = (props) => (
-  <div class="w-12 shrink-0 pr-2 text-right font-mono text-[10px] leading-[2] tabular-nums text-[--color-fg-faint]">
+  <div class="w-12 shrink-0 pr-2 text-right font-mono text-[12px] tabular-nums text-[--color-fg-faint]">
     {props.time ?? ""}
   </div>
 );
@@ -69,12 +69,8 @@ export const TimelineIllustration: Component = () => {
         {/* text-row-A */}
         <div class="flex items-start">
           <TimeCell time="00:00" />
-          <p class="flex-1 font-serif text-[12.5px] leading-[1.7] tracking-[0.01em] text-[--color-fg-dim]">
+          <p class="flex-1 font-serif text-[12px] tracking-[0.01em] text-[--color-fg-dim]">
             {t("illust.textA.pre")}
-            <span class="text-[--color-accent] line-through opacity-70">
-              {t("illust.textA.strike")}
-            </span>{" "}
-            {t("illust.textA.mid")}{" "}
             <span class="rounded-[2px] bg-[--color-accent]/10 px-1 text-[--color-fg]">
               {t("illust.textA.highlight")}
             </span>
@@ -117,12 +113,11 @@ export const TimelineIllustration: Component = () => {
         {/* text-row-B */}
         <div class="mt-5 flex items-start">
           <TimeCell time="00:12" />
-          <p class="flex-1 font-serif text-[12.5px] leading-[1.7] tracking-[0.01em] text-[--color-fg-dim]">
+          <p class="flex-1 font-serif text-[12px] tracking-[0.01em] text-[--color-fg-dim]">
             {t("illust.textB.pre")}
             <span class="text-[--color-accent] line-through opacity-70">
               {t("illust.textB.strike")}
-            </span>{" "}
-            {t("illust.textB.mid")}{" "}
+            </span>
             <span class="rounded-[2px] bg-[--color-accent]/10 px-1 text-[--color-fg]">
               {t("illust.textB.highlight")}
             </span>
@@ -178,7 +173,7 @@ export const TimelineIllustration: Component = () => {
           style={{
             left: "32%",
             width: "30%",
-            top: "70%",
+            top: "66%",
             bottom: "14px",
           }}
         >

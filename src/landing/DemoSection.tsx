@@ -16,8 +16,7 @@ export const DemoSection: Component = () => {
             {t("demo.sectionLabel")}
           </p>
           <h2 class="font-serif text-[clamp(1.8rem,3.2vw,2.6rem)] font-semibold leading-[1.25] text-[--color-fg]">
-            {t("demo.title1")}{" "}
-            <em class="italic text-[--color-accent]">{t("demo.titleEm")}</em>
+            {t("demo.title")}
           </h2>
           <p class="mt-4 font-sans text-[0.95rem] leading-[1.75] text-[--color-fg-dim]">
             {t("demo.desc")}

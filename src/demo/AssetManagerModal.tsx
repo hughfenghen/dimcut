@@ -17,11 +17,11 @@ interface AssetManagerModalProps {
   onClose: () => void;
 }
 
-const TYPE_LABEL_KEYS: Record<string, string> = {
-  video: "illust.video",
-  audio: "illust.audio",
-  image: "illust.img",
-  text: "illust.img",
+const TYPE_LABELS: Record<string, string> = {
+  video: "Video",
+  audio: "Audio",
+  image: "Image",
+  text: "Text",
 };
 
 export const AssetManagerModal: Component<AssetManagerModalProps> = (props) => {
@@ -127,7 +127,7 @@ export const AssetManagerModal: Component<AssetManagerModalProps> = (props) => {
                           ITEM_COLORS[props.data.mainTrackConf.item.type],
                       }}
                     >
-                      {t(TYPE_LABEL_KEYS[props.data.mainTrackConf.item.type] ?? "illust.video")}
+                      {TYPE_LABELS[props.data.mainTrackConf.item.type] ?? "Video"}
                     </span>
                     <span class="text-sm text-gray-800 truncate">
                       {props.data.mainTrackConf.item.file.name}
@@ -245,7 +245,7 @@ export const AssetManagerModal: Component<AssetManagerModalProps> = (props) => {
                               ITEM_COLORS[item.type] ?? "#E5E7EB",
                           }}
                         >
-                          {t(TYPE_LABEL_KEYS[item.type] ?? "illust.video")}
+                          {TYPE_LABELS[item.type] ?? "Video"}
                         </span>
                         <span class="text-sm text-gray-800 truncate">
                           {"file" in item
