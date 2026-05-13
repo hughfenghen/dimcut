@@ -17,8 +17,8 @@ import { AssetManagerModal } from "./AssetManagerModal.tsx";
 
 async function loadDemoData(): Promise<IChangeEventData> {
   const [videoResp, asrResp] = await Promise.all([
-    fetch("/example-video.mp4"),
-    fetch("/example-video-asr.json"),
+    fetch("/chunjianghuayueye_720p_hevc_1.mp4"),
+    fetch("/chunjianghuayueye_asr.json"),
   ]);
 
   const videoBlob = await videoResp.blob();
