@@ -401,13 +401,10 @@ const App: Component = () => {
               {exporting() ? t("demoApp.exporting") : t("demoApp.exportTrim")}
             </button>
           </div>
+          {loading() && (
+            <span class="text-sm text-gray-500">loading...</span>
+          )}
         </div>
-
-        {loading() && (
-          <div class="text-gray-500 text-sm py-8 text-center">
-            {t("demoApp.loading")}
-          </div>
-        )}
 
         {data() && (
           <div class="flex gap-4 items-start">
