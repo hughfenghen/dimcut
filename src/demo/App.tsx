@@ -1,4 +1,11 @@
-import { type Component, createSignal, onMount, For, Show } from "solid-js";
+import {
+  type Component,
+  createSignal,
+  onMount,
+  onCleanup,
+  For,
+  Show,
+} from "solid-js";
 import { useI18n } from "../i18n";
 import { Timeline } from "../lib/index.ts";
 import { PreviewPlayer } from "../lib/PreviewPlayer.tsx";
@@ -111,6 +118,26 @@ const App: Component = () => {
     const d = await loadDemoData();
     setData(d);
     setLoading(false);
+  });
+
+  onMount(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.code !== "Space") return;
+      const target = e.target as HTMLElement | null;
+      if (
+        target &&
+        (target.tagName === "INPUT" ||
+          target.tagName === "TEXTAREA" ||
+          target.isContentEditable)
+      ) {
+        return;
+      }
+      if (mainTrackDeleted() || !data()) return;
+      e.preventDefault();
+      setIsPlaying((p) => !p);
+    };
+    window.addEventListener("keydown", handleKeyDown);
+    onCleanup(() => window.removeEventListener("keydown", handleKeyDown));
   });
 
   const bumpVersion = () => {
