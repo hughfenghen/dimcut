@@ -8,7 +8,7 @@ I believe high-density information improves the editing experience and efficienc
 
 DimCut is built on web technologies. All processing happens locally in the browser — your files are never uploaded to any server.
 
-**[Try the live demo →](https://hughfenghen.github.io/dimcut/)**
+**[Try the live demo →](https://fenghen.me/dimcut/)**
 
 ---
 
@@ -45,5 +45,5 @@ Open `http://localhost:5173` to see the landing page and interactive demo.
 
 ## Links
 
-- [Live Demo](https://hughfenghen.github.io/dimcut/)
+- [Live Demo](https://fenghen.me/dimcut/)
 - [Author — Fenghen](https://fenghen.me)
