@@ -1,6 +1,4 @@
-import type { IChangeEventData } from "../lib/types.ts";
-
-export const mockData: IChangeEventData = {
+export const mockData = {
   mainTrackConf: {
     item: {
       id: "main-video",
