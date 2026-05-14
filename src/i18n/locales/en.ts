@@ -74,4 +74,7 @@ export const en: Record<string, string> = {
   "demoModal.importAsset": "Import Assets",
   "demoModal.replaceTrack": "Replace Source",
   "demoModal.invalidAsr": "Invalid ASR JSON file",
+  "demoModal.asrSchemaTipPrefix": "ASR data schema: see ",
+  "demoModal.asrSchemaTipLink": "example file",
+  "demoModal.asrSchemaTipSuffix": ". Time unit is seconds.",
 };

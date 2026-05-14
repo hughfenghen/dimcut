@@ -219,6 +219,18 @@ export const AssetManagerModal: Component<AssetManagerModalProps> = (props) => {
                 </div>
               </Show>
             </div>
+            <p class="text-xs text-gray-400 mt-2">
+              {t("demoModal.asrSchemaTipPrefix")}
+              <a
+                href="/chunjianghuayueye_asr.json"
+                target="_blank"
+                rel="noreferrer"
+                class="text-blue-500 underline hover:text-blue-700"
+              >
+                {t("demoModal.asrSchemaTipLink")}
+              </a>
+              {t("demoModal.asrSchemaTipSuffix")}
+            </p>
           </div>
 
           <div>

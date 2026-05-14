@@ -71,4 +71,7 @@ export const zh: Record<string, string> = {
   "demoModal.importAsset": "导入素材",
   "demoModal.replaceTrack": "替换素材",
   "demoModal.invalidAsr": "无效的 ASR JSON 文件",
+  "demoModal.asrSchemaTipPrefix": "ASR 数据结构查看",
+  "demoModal.asrSchemaTipLink": "示例文件",
+  "demoModal.asrSchemaTipSuffix": "，时间单位是 s",
 };

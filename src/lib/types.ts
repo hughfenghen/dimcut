@@ -1,10 +1,12 @@
 export interface AsrWord {
   word: string;
+  // 开始时间，单位 s
   start: number;
   end: number;
 }
 
 export interface AsrSegment {
+  // 开始时间，单位 s
   start: number;
   end: number;
   text: string;

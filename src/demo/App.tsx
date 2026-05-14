@@ -22,19 +22,22 @@ import type {
 } from "../lib/types.ts";
 import { AssetManagerModal } from "./AssetManagerModal.tsx";
 
+const VIDEO_URL = "/chunjianghuayueye_720p_hevc.mp4";
+const ASR_URL = "/chunjianghuayueye_asr.json";
+
 async function loadDemoData(): Promise<IChangeEventData> {
   const [videoResp, asrResp] = await Promise.all([
-    fetch("/chunjianghuayueye_720p_hevc_1.mp4"),
-    fetch("/chunjianghuayueye_asr.json"),
+    fetch(VIDEO_URL),
+    fetch(ASR_URL),
   ]);
 
   const videoBlob = await videoResp.blob();
-  const videoFile = new File([videoBlob], "example-video.mp4", {
+  const videoFile = new File([videoBlob], VIDEO_URL.split("/").pop()!, {
     type: "video/mp4",
   });
 
   const asrData: AsrData = await asrResp.json();
-  asrData.filename = "example-video-asr.json";
+  asrData.filename = ASR_URL.split("/").pop()!;
 
   const duration = await getVideoDuration(videoFile);
 
