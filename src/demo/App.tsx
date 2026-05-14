@@ -22,8 +22,8 @@ import type {
 } from "../lib/types.ts";
 import { AssetManagerModal } from "./AssetManagerModal.tsx";
 
-const VIDEO_URL = "/chunjianghuayueye_720p_hevc.mp4";
-const ASR_URL = "/chunjianghuayueye_asr.json";
+const VIDEO_URL = `${import.meta.env.BASE_URL}chunjianghuayueye_720p_hevc.mp4`;
+const ASR_URL = `${import.meta.env.BASE_URL}chunjianghuayueye_asr.json`;
 
 async function loadDemoData(): Promise<IChangeEventData> {
   const [videoResp, asrResp] = await Promise.all([
