@@ -24,11 +24,13 @@ import { AssetManagerModal } from "./AssetManagerModal.tsx";
 
 const VIDEO_URL = `${import.meta.env.BASE_URL}chunjianghuayueye_720p_hevc.mp4`;
 const ASR_URL = `${import.meta.env.BASE_URL}chunjianghuayueye_asr.json`;
+const SFX_URL = `${import.meta.env.BASE_URL}audio/click.m4a`;
 
 async function loadDemoData(): Promise<IChangeEventData> {
-  const [videoResp, asrResp] = await Promise.all([
+  const [videoResp, asrResp, sfxResp] = await Promise.all([
     fetch(VIDEO_URL),
     fetch(ASR_URL),
+    fetch(SFX_URL),
   ]);
 
   const videoBlob = await videoResp.blob();
@@ -38,6 +40,11 @@ async function loadDemoData(): Promise<IChangeEventData> {
 
   const asrData: AsrData = await asrResp.json();
   asrData.filename = ASR_URL.split("/").pop()!;
+
+  const sfxBlob = await sfxResp.blob();
+  const sfxFile = new File([sfxBlob], SFX_URL.split("/").pop()!, {
+    type: "audio/m4a",
+  });
 
   const duration = await getVideoDuration(videoFile);
 
@@ -53,7 +60,16 @@ async function loadDemoData(): Promise<IChangeEventData> {
       },
       asrData,
     },
-    items: [],
+    items: [
+      {
+        id: "sfx-click",
+        type: "audio",
+        startTime: 58,
+        endTime: 58.5,
+        zIndex: 1,
+        file: sfxFile,
+      },
+    ],
     deletedRanges: [],
   };
 }
@@ -404,9 +420,7 @@ const App: Component = () => {
               {exporting() ? t("demoApp.exporting") : t("demoApp.exportTrim")}
             </button>
           </div>
-          {loading() && (
-            <span class="text-sm text-gray-500">loading...</span>
-          )}
+          {loading() && <span class="text-sm text-gray-500">loading...</span>}
         </div>
 
         {data() && (
