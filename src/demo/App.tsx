@@ -343,7 +343,7 @@ const App: Component = () => {
   };
 
   return (
-    <div class="max-w-[1400px] mx-auto p-4">
+    <div class="max-w-350 mx-auto p-4">
       <section>
         <div class="mb-4 flex items-center gap-3">
           <div class="flex items-center gap-1">

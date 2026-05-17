@@ -38,7 +38,7 @@ export const zh: Record<string, string> = {
   "footer.author": "风痕",
   "footer.github": "GitHub ↗",
 
-  "illust.title": "dimcut timeline",
+  "illust.title": "fenghen.me/dimcut",
   "illust.textA.pre": "一维时间轴折叠成多行，",
   "illust.textA.highlight": "与文字一起二维排列",
   "illust.textA.post": "。",

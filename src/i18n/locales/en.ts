@@ -40,7 +40,7 @@ export const en: Record<string, string> = {
   "footer.author": "Fenghen",
   "footer.github": "GitHub ↗",
 
-  "illust.title": "dimcut timeline",
+  "illust.title": "fenghen.me/dimcut",
   "illust.textA.pre": "Fold the 1D timeline into rows,",
   "illust.textA.highlight": "lined up alongside text",
   "illust.textA.post": ".",
