@@ -10,7 +10,7 @@ DimCut is built on web technologies. All processing happens locally in the brows
 
 **[Try the live demo →](https://fenghen.me/dimcut/)**
 
----
+![DimCut preview](./preview.png)
 
 ## Features
 
