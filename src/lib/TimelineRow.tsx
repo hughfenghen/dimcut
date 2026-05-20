@@ -332,8 +332,8 @@ export const TimelineRow: Component<TimelineRowProps> = (props) => {
                 width: `${overlay().width}px`,
                 top: `${nonAsrTop()}px`,
                 height: `${nonAsrHeight()}px`,
-                "background-color": "rgba(59, 130, 246, 0.2)",
-                border: "1px solid rgba(59, 130, 246, 0.4)",
+                "background-color": "rgba(59, 130, 246, 0.5)",
+                border: "1px solid rgba(59, 130, 246, 0.8)",
               }}
             />
           )}

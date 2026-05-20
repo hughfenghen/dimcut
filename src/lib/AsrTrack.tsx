@@ -54,7 +54,7 @@ export const AsrTrack: Component<AsrTrackProps> = (props) => {
   return (
     <div
       ref={setupResizeObserver}
-      class="relative px-1 text-sm text-black whitespace-pre-wrap break-words select-text"
+      class="relative px-1 text-sm text-black whitespace-pre-wrap wrap-break-word select-text"
       data-asr-track
       style={{ "min-height": `${ASR_TRACK_HEIGHT}px` }}
     >
@@ -64,13 +64,11 @@ export const AsrTrack: Component<AsrTrackProps> = (props) => {
             <For each={seg.words}>
               {(w) => (
                 <span
-                  class={
-                    w.isDeleted
-                      ? "rounded-[2px] bg-red-300/50 line-through px-[1px]"
-                      : isWordActive(w)
-                        ? "rounded-[2px] bg-[#bbb] p-[2px]"
-                        : "px-[1px]"
-                  }
+                  classList={{
+                    "bg-red-300/50 line-through ": w.isDeleted,
+                    "bg-[#bbb] p-0.5": isWordActive(w),
+                  }}
+                  class="px-px cursor-pointer rounded-xs "
                   data-asr-word
                   data-asr-word-start={w.start}
                   data-asr-word-end={w.end}
