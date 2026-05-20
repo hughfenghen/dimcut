@@ -73,5 +73,5 @@ export const zh: Record<string, string> = {
   "demoModal.invalidAsr": "无效的 ASR JSON 文件",
   "demoModal.asrSchemaTipPrefix": "ASR 数据结构查看",
   "demoModal.asrSchemaTipLink": "示例文件",
-  "demoModal.asrSchemaTipSuffix": "，时间单位是 s",
+  "demoModal.asrSchemaTipSuffix": "，时间单位是 s，使用语音识别工具或服务生成",
 };

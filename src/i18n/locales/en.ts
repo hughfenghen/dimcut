@@ -76,5 +76,5 @@ export const en: Record<string, string> = {
   "demoModal.invalidAsr": "Invalid ASR JSON file",
   "demoModal.asrSchemaTipPrefix": "ASR data schema: see ",
   "demoModal.asrSchemaTipLink": "example file",
-  "demoModal.asrSchemaTipSuffix": ". Time unit is seconds.",
+  "demoModal.asrSchemaTipSuffix": "; time unit is in seconds. Generate with a speech recognition tool or service.",
 };
